@@ -5,7 +5,6 @@ import { sessionRepo, resultRepo, statsRepo, activeSessionRepo } from '../../db/
 import {
   reviewReducer,
   buildInitialState,
-  buildStateFromSnapshot,
   toSnapshot,
   getCorrectCount,
   getIncorrectCount,
@@ -106,6 +105,201 @@ function FlipCard({ question, answer, isFlipped, onFlip, animationEnabled }: Fli
           <p className="text-xl font-medium text-app-primary text-center leading-relaxed max-h-full overflow-y-auto">
             {answer}
           </p>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+interface FilmstripProps {
+  cards: ReviewCard[];
+  activeIndex: number;
+  onSelect: (index: number) => void;
+}
+
+const SCRUBBER_BAR_WIDTH = 12;
+const SCRUBBER_BAR_HEIGHT = 52;
+const SCRUBBER_BAR_GAP = 10;
+const SCRUBBER_BAR_STEP = SCRUBBER_BAR_WIDTH + SCRUBBER_BAR_GAP;
+
+function clampIndex(index: number, total: number) {
+  return Math.min(Math.max(index, 0), total - 1);
+}
+
+function Filmstrip({ cards, activeIndex, onSelect }: FilmstripProps) {
+  const dragOffsetRef = useRef(0);
+  const dragStartXRef = useRef(0);
+  const activeIndexRef = useRef(activeIndex);
+  const pointerIdRef = useRef<number | null>(null);
+  const animationFrameRef = useRef<number | null>(null);
+  const pendingClientXRef = useRef<number | null>(null);
+  const isDraggingRef = useRef(false);
+  const didDragRef = useRef(false);
+  const ignoreClickRef = useRef(false);
+  const [dragOffset, setDragOffset] = useState(0);
+
+  useEffect(() => {
+    activeIndexRef.current = activeIndex;
+  }, [activeIndex]);
+
+  const updateSelectionFromOffset = useCallback((clientX: number) => {
+    const delta = clientX - dragStartXRef.current;
+    const stepShift = delta > 0
+      ? Math.floor(delta / SCRUBBER_BAR_STEP)
+      : Math.ceil(delta / SCRUBBER_BAR_STEP);
+
+    if (stepShift !== 0) {
+      const nextIndex = clampIndex(activeIndexRef.current - stepShift, cards.length);
+      const appliedShift = activeIndexRef.current - nextIndex;
+
+      if (appliedShift !== 0) {
+        activeIndexRef.current = nextIndex;
+        dragStartXRef.current += appliedShift * SCRUBBER_BAR_STEP;
+        onSelect(nextIndex);
+      }
+    }
+
+    dragOffsetRef.current = clientX - dragStartXRef.current;
+    setDragOffset(dragOffsetRef.current);
+  }, [cards.length, onSelect]);
+
+  const flushPendingPointerMove = useCallback(() => {
+    if (pendingClientXRef.current === null) return;
+    updateSelectionFromOffset(pendingClientXRef.current);
+    pendingClientXRef.current = null;
+    animationFrameRef.current = null;
+  }, [updateSelectionFromOffset]);
+
+  const resetDrag = useCallback(() => {
+    if (animationFrameRef.current !== null) {
+      cancelAnimationFrame(animationFrameRef.current);
+      animationFrameRef.current = null;
+    }
+    pendingClientXRef.current = null;
+    pointerIdRef.current = null;
+    isDraggingRef.current = false;
+    dragOffsetRef.current = 0;
+    setDragOffset(0);
+  }, []);
+
+  const handlePointerDown = useCallback((event: React.PointerEvent<HTMLDivElement>) => {
+    if (cards.length <= 1) return;
+    pointerIdRef.current = event.pointerId;
+    isDraggingRef.current = true;
+    didDragRef.current = false;
+    ignoreClickRef.current = false;
+    pendingClientXRef.current = null;
+    dragStartXRef.current = event.clientX;
+    dragOffsetRef.current = 0;
+    setDragOffset(0);
+    event.currentTarget.setPointerCapture(event.pointerId);
+  }, [cards.length]);
+
+  const handlePointerMove = useCallback((event: React.PointerEvent<HTMLDivElement>) => {
+    if (!isDraggingRef.current || pointerIdRef.current !== event.pointerId) return;
+    if (Math.abs(event.clientX - dragStartXRef.current) > 4) {
+      didDragRef.current = true;
+    }
+    pendingClientXRef.current = event.clientX;
+    if (animationFrameRef.current === null) {
+      animationFrameRef.current = requestAnimationFrame(flushPendingPointerMove);
+    }
+  }, [flushPendingPointerMove]);
+
+  const handlePointerUp = useCallback((event: React.PointerEvent<HTMLDivElement>) => {
+    if (pointerIdRef.current !== event.pointerId) return;
+    if (animationFrameRef.current !== null) {
+      flushPendingPointerMove();
+    }
+    if (event.currentTarget.hasPointerCapture(event.pointerId)) {
+      event.currentTarget.releasePointerCapture(event.pointerId);
+    }
+    ignoreClickRef.current = didDragRef.current;
+    resetDrag();
+  }, [flushPendingPointerMove, resetDrag]);
+
+  const handlePointerLeave = useCallback((event: React.PointerEvent<HTMLDivElement>) => {
+    if (!isDraggingRef.current || pointerIdRef.current !== event.pointerId) return;
+    if (animationFrameRef.current !== null) {
+      flushPendingPointerMove();
+    }
+    if (event.currentTarget.hasPointerCapture(event.pointerId)) {
+      event.currentTarget.releasePointerCapture(event.pointerId);
+    }
+    ignoreClickRef.current = didDragRef.current;
+    resetDrag();
+  }, [flushPendingPointerMove, resetDrag]);
+
+  useEffect(() => () => {
+    if (animationFrameRef.current !== null) {
+      cancelAnimationFrame(animationFrameRef.current);
+    }
+  }, []);
+
+  return (
+    <div className="flex flex-col gap-2">
+      <div className="flex items-center justify-between px-1 text-[11px] uppercase tracking-[0.22em] text-app-secondary/60">
+        <span>Scrub</span>
+        <span>{activeIndex + 1} / {cards.length}</span>
+      </div>
+
+      <div
+        className="relative h-20 overflow-hidden rounded-full border border-app-border/60 bg-app-surface/70 px-6"
+        onPointerDown={handlePointerDown}
+        onPointerMove={handlePointerMove}
+        onPointerUp={handlePointerUp}
+        onPointerCancel={handlePointerUp}
+        onPointerLeave={handlePointerLeave}
+        style={{ touchAction: 'pan-x' }}
+        aria-label="Card scrubber"
+      >
+        <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_center,_rgba(255,255,255,0.14),_transparent_62%)]" />
+        <div className="pointer-events-none absolute inset-y-3 left-1/2 w-px -translate-x-1/2 bg-app-nav/20" />
+
+        <div
+          className="absolute left-1/2 top-1/2 flex -translate-y-1/2 items-end"
+          style={{
+            transform: `translate(${dragOffset - (activeIndex * SCRUBBER_BAR_STEP) - (SCRUBBER_BAR_WIDTH / 2)}px, -50%)`,
+            transition: isDraggingRef.current ? 'none' : 'transform 180ms ease-out',
+          }}
+        >
+          {cards.map((card, index) => {
+            const distanceFromCenter = Math.abs(index - activeIndex - (dragOffset / SCRUBBER_BAR_STEP));
+            const proximity = Math.max(0, 1 - (distanceFromCenter / 6));
+            const isActive = distanceFromCenter < 0.35;
+            const opacity = 0.08 + (proximity * 0.92);
+            const scale = 0.35 + (proximity * 0.65);
+
+            return (
+              <button
+                key={card.id}
+                type="button"
+                onClick={() => {
+                  if (!isDraggingRef.current) {
+                    if (ignoreClickRef.current) {
+                      ignoreClickRef.current = false;
+                      return;
+                    }
+                    onSelect(index);
+                  }
+                }}
+                className="relative shrink-0 rounded-full transition-[opacity,transform,background-color,box-shadow] duration-150 ease-out focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-app-nav/50"
+                style={{
+                  width: `${SCRUBBER_BAR_WIDTH}px`,
+                  height: `${SCRUBBER_BAR_HEIGHT}px`,
+                  marginRight: index === cards.length - 1 ? 0 : `${SCRUBBER_BAR_GAP}px`,
+                  opacity,
+                  transform: `scaleY(${scale})`,
+                  backgroundColor: isActive ? '#3F51B5' : 'rgba(255, 255, 255, 0.34)',
+                  boxShadow: isActive ? '0 0 0 1px rgba(63, 81, 181, 0.55), 0 0 18px rgba(63, 81, 181, 0.28)' : 'none',
+                }}
+                aria-label={`Go to card ${index + 1}`}
+                aria-pressed={index === activeIndex}
+              >
+                <span className="sr-only">Card {index + 1}</span>
+              </button>
+            );
+          })}
         </div>
       </div>
     </div>
@@ -303,6 +497,10 @@ export function ReviewPage({ mode = 'full', seedCardIds }: { mode?: SessionMode;
     return () => clearTimeout(timer);
   }, [pageStatus, state.currentIndex, state.isFlipped, settings.autoShowAnswer]);
 
+  const navigateToCard = useCallback((index: number) => {
+    dispatch({ type: 'NAVIGATE_TO', payload: index });
+  }, []);
+
   // ─── Keyboard shortcuts ──────────────────────────────────────────────────────
 
   useEffect(() => {
@@ -383,6 +581,12 @@ export function ReviewPage({ mode = 'full', seedCardIds }: { mode?: SessionMode;
       <div className="flex flex-col flex-1 gap-6" aria-live="polite" aria-atomic="false">
         {currentCard ? (
           <>
+            <Filmstrip
+              cards={state.queue}
+              activeIndex={state.currentIndex}
+              onSelect={navigateToCard}
+            />
+
             {/* Card */}
             <FlipCard
               question={currentCard.question}

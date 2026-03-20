@@ -129,4 +129,5 @@ export type ReviewAction =
   | { type: 'MARK_FLAGGED' }
   | { type: 'NAVIGATE_PREV' }
   | { type: 'NAVIGATE_NEXT' }
+  | { type: 'NAVIGATE_TO'; payload: number }
   | { type: 'RESTORE'; payload: ActiveSessionSnapshot };
