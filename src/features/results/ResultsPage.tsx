@@ -1,7 +1,7 @@
 import React from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { useLiveQuery } from 'dexie-react-hooks';
-import { PieChart, Pie, Cell, Tooltip, ResponsiveContainer } from 'recharts';
+import { PieChart, Pie, Cell, ResponsiveContainer } from 'recharts';
 import { db } from '../../db';
 import { StandardShell } from '../../shared/layouts/StandardShell';
 import { Button } from '../../shared/components/Button';
@@ -185,12 +185,6 @@ export function ResultsPage() {
                         <Cell key={i} fill={entry.color} />
                       ))}
                     </Pie>
-                    <Tooltip
-                      contentStyle={{ background: '#252729', border: '1px solid #2E3135', borderRadius: 8 }}
-                      labelStyle={{ color: '#fff' }}
-                      itemStyle={{ color: '#909090' }}
-                      formatter={(value: number, name: string) => [`${value} cards`, name]}
-                    />
                   </PieChart>
                 </ResponsiveContainer>
               ) : (
