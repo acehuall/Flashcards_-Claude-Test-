@@ -221,6 +221,15 @@ export function ReviewPage({ mode = 'full', seedCardIds }: { mode?: SessionMode;
     }
   };
 
+  const discardPendingSession = useCallback(async () => {
+    if (!pendingSnapshot) return;
+    await Promise.all([
+      activeSessionRepo.deleteBySetId(id),
+      sessionRepo.delete(pendingSnapshot.sessionId),
+    ]);
+    setPendingSnapshot(null);
+  }, [id, pendingSnapshot]);
+
   const handleResume = () => {
     if (!pendingSnapshot) return;
     dispatch({ type: 'RESTORE', payload: pendingSnapshot });
@@ -334,6 +343,9 @@ export function ReviewPage({ mode = 'full', seedCardIds }: { mode?: SessionMode;
   const correctCount = getCorrectCount(state.outcomes);
   const incorrectCount = getIncorrectCount(state.outcomes);
   const flaggedCount = getFlaggedCount(state.outcomes);
+  const currentProgress = state.isComplete
+    ? state.totalCards
+    : Math.min(answered + 1, state.totalCards);
 
   if (pageStatus === 'loading' || pageStatus === 'completing') {
     return (
@@ -348,7 +360,10 @@ export function ReviewPage({ mode = 'full', seedCardIds }: { mode?: SessionMode;
       <ReviewShell exitTo={`/set/${id}`}>
         <ResumePrompt
           onResume={handleResume}
-          onRestart={async () => { setPendingSnapshot(null); await startFresh(); }}
+          onRestart={async () => {
+            await discardPendingSession();
+            await startFresh();
+          }}
         />
       </ReviewShell>
     );
@@ -358,7 +373,7 @@ export function ReviewPage({ mode = 'full', seedCardIds }: { mode?: SessionMode;
     <ReviewShell
       exitTo={`/set/${id}`}
       progress={{
-        current: state.currentIndex + 1,
+        current: currentProgress,
         total: state.totalCards,
         correct: correctCount,
         incorrect: incorrectCount,

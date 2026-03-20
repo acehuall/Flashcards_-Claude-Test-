@@ -18,22 +18,6 @@ export function shuffle<T>(arr: T[]): T[] {
   return copy;
 }
 
-/**
- * Remove card at currentIndex and reinsert it 3 positions ahead.
- * If the remaining queue is shorter than 3 ahead, append to end.
- */
-export function requeueIncorrect(
-  queue: ReviewCard[],
-  currentIndex: number,
-): ReviewCard[] {
-  if (queue.length <= 1) return queue;
-  const card = queue[currentIndex];
-  const newQueue = queue.filter((_, i) => i !== currentIndex);
-  const insertAt = Math.min(currentIndex + 3, newQueue.length);
-  newQueue.splice(insertAt, 0, card);
-  return newQueue;
-}
-
 export function buildInitialState(
   cards: ReviewCard[],
   sessionId: number,
@@ -132,14 +116,16 @@ export function reviewReducer(
       if (!card) return state;
 
       const newOutcomes = { ...state.outcomes, [card.id]: 'incorrect' as Outcome };
-      const newQueue = requeueIncorrect(state.queue, state.currentIndex);
+      const newQueue = state.queue.filter((_, i) => i !== state.currentIndex);
+      const isComplete = newQueue.length === 0;
 
       return {
         ...state,
         queue: newQueue,
         isFlipped: false,
         outcomes: newOutcomes,
-        // Same index — next card is now here; the incorrect card is further ahead
+        isComplete,
+        currentIndex: Math.min(state.currentIndex, newQueue.length - 1),
       };
     }
 
