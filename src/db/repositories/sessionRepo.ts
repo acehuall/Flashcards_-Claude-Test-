@@ -8,6 +8,10 @@ export const sessionRepo = {
     return db.sessions.add(data);
   },
 
+  async delete(id: number): Promise<void> {
+    await db.sessions.delete(id);
+  },
+
   async complete(id: number, score: number): Promise<void> {
     await db.sessions.update(id, { completedAt: Date.now(), score });
   },
