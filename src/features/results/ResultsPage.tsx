@@ -61,6 +61,7 @@ export function ResultsPage() {
 
   const incorrectCardIds = results.filter((r) => r.outcome === 'incorrect').map((r) => r.cardId);
   const flaggedCardIds   = results.filter((r) => r.outcome === 'flagged').map((r) => r.cardId);
+  const hasMultipleSegments = donutData.length > 1;
 
   const headline =
     pct === 100 ? 'Perfect score!' :
@@ -97,7 +98,7 @@ export function ResultsPage() {
         <div className="bg-app-surface border border-app-border rounded-card p-6 mb-6">
           <div className="flex items-center gap-8">
             {/* Donut */}
-            <div className="relative shrink-0" style={{ width: 220, height: 180 }}>
+            <div className="relative shrink-0 w-[180px] h-[180px]">
               {donutData.length > 0 ? (
                 <ResponsiveContainer width="100%" height="100%">
                   <PieChart>
@@ -107,7 +108,9 @@ export function ResultsPage() {
                       cy="50%"
                       innerRadius={46}
                       outerRadius={64}
-                      paddingAngle={2}
+                      paddingAngle={0}
+                      stroke={hasMultipleSegments ? '#FFFFFF' : 'none'}
+                      strokeWidth={hasMultipleSegments ? 2 : 0}
                       dataKey="value"
                       startAngle={90}
                       endAngle={-270}
@@ -121,14 +124,11 @@ export function ResultsPage() {
                   </PieChart>
                 </ResponsiveContainer>
               ) : (
-                <div className="w-full h-full rounded-full border-4 border-app-border" />
+                <div className="w-full h-full rounded-full border-[14px] border-app-border" />
               )}
-              <div
-                className="absolute top-1/2 -translate-y-1/2 flex flex-col items-center justify-center pointer-events-none"
-                style={{ left: 16, width: 126 }}
-              >
-                <span className="text-2xl font-bold text-app-primary">{pct}%</span>
-                <span className="text-xs text-app-secondary">{correct}/{total}</span>
+              <div className="pointer-events-none absolute inset-0 flex flex-col items-center justify-center text-center">
+                <span className="text-2xl font-bold text-app-primary leading-none">{pct}%</span>
+                <span className="mt-2 text-xs text-app-secondary">{correct}/{total}</span>
               </div>
             </div>
 
