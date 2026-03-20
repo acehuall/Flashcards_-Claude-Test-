@@ -167,6 +167,14 @@ export function reviewReducer(
       };
     }
 
+    case 'NAVIGATE_TO': {
+      return {
+        ...state,
+        currentIndex: Math.min(Math.max(action.payload, 0), state.queue.length - 1),
+        isFlipped: false,
+      };
+    }
+
     case 'RESTORE': {
       return buildStateFromSnapshot(action.payload);
     }
