@@ -14,72 +14,6 @@ const COLORS = {
   flagged:   '#FFC107',
 };
 
-const RADIAN = Math.PI / 180;
-
-function renderDonutLabel({
-  cx,
-  cy,
-  midAngle,
-  outerRadius,
-  percent,
-  name,
-  value,
-}: {
-  cx?: number;
-  cy?: number;
-  midAngle?: number;
-  outerRadius?: number;
-  percent?: number;
-  name?: string;
-  value?: number;
-}) {
-  if (
-    cx === undefined ||
-    cy === undefined ||
-    midAngle === undefined ||
-    outerRadius === undefined ||
-    percent === undefined ||
-    !name ||
-    value === undefined
-  ) {
-    return null;
-  }
-
-  const lineStartRadius = outerRadius + 6;
-  const lineEndRadius = outerRadius + 22;
-  const x1 = cx + lineStartRadius * Math.cos(-midAngle * RADIAN);
-  const y1 = cy + lineStartRadius * Math.sin(-midAngle * RADIAN);
-  const x2 = cx + lineEndRadius * Math.cos(-midAngle * RADIAN);
-  const y2 = cy + lineEndRadius * Math.sin(-midAngle * RADIAN);
-  const textAnchor = x2 >= cx ? 'start' : 'end';
-  const horizontalOffset = x2 >= cx ? 10 : -10;
-
-  return (
-    <g>
-      <path d={`M${x1},${y1}L${x2},${y2}`} stroke="#909090" strokeWidth={1.5} fill="none" />
-      <text
-        x={x2 + horizontalOffset}
-        y={y2 - 4}
-        textAnchor={textAnchor}
-        fill="#E7EAF0"
-        fontSize={11}
-        fontWeight={600}
-      >
-        {name}
-      </text>
-      <text
-        x={x2 + horizontalOffset}
-        y={y2 + 10}
-        textAnchor={textAnchor}
-        fill="#909090"
-        fontSize={10}
-      >
-        {`${value} (${Math.round(percent * 100)}%)`}
-      </text>
-    </g>
-  );
-}
-
 export function ResultsPage() {
   const { sessionId } = useParams<{ sessionId: string }>();
   const navigate = useNavigate();
@@ -169,7 +103,7 @@ export function ResultsPage() {
                   <PieChart>
                     <Pie
                       data={donutData}
-                      cx="36%"
+                      cx="50%"
                       cy="50%"
                       innerRadius={46}
                       outerRadius={64}
@@ -178,7 +112,6 @@ export function ResultsPage() {
                       startAngle={90}
                       endAngle={-270}
                       labelLine={false}
-                      label={renderDonutLabel}
                       isAnimationActive={false}
                     >
                       {donutData.map((entry, i) => (
