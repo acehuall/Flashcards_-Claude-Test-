@@ -93,7 +93,7 @@ export function SetDetailPage() {
         subtitle={pack ? `${pack.name} · ${cards.length} card${cards.length !== 1 ? 's' : ''}` : `${cards.length} card${cards.length !== 1 ? 's' : ''}`}
         back={{ label: pack ? pack.name : 'Back', to: pack ? `/pack/${pack.id}` : '/' }}
         actions={
-          <div className="flex items-center gap-2">
+          <div className="grid grid-cols-2 gap-2 sm:flex sm:flex-wrap sm:justify-end">
             {/* CSV actions */}
             <input
               ref={fileInputRef}
@@ -109,6 +109,7 @@ export function SetDetailPage() {
               loading={importing}
               onClick={() => fileInputRef.current?.click()}
               title="Import cards from CSV"
+              className="w-full justify-center whitespace-nowrap sm:w-auto"
             >
               <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
@@ -121,6 +122,7 @@ export function SetDetailPage() {
               onClick={handleExport}
               disabled={!canReview}
               title="Export set to CSV"
+              className="w-full justify-center whitespace-nowrap sm:w-auto"
             >
               <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
@@ -130,6 +132,7 @@ export function SetDetailPage() {
             <Button
               size="sm"
               onClick={() => navigate(`/create/card/${id}`)}
+              className="w-full justify-center whitespace-nowrap sm:w-auto"
             >
               <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
@@ -142,6 +145,7 @@ export function SetDetailPage() {
               onClick={() => navigate(`/review/${id}`)}
               disabled={!canReview}
               title={canReview ? 'Start review session' : 'Add at least one card to start'}
+              className="w-full justify-center whitespace-nowrap sm:w-auto"
             >
               <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z" />
