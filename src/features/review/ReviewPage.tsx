@@ -10,7 +10,7 @@ import {
   getIncorrectCount,
   getFlaggedCount,
 } from '../../domain/reviewEngine';
-import type { ReviewCard, SessionMode, ActiveSessionSnapshot } from '../../domain/types';
+import type { ReviewCard, SessionMode, ActiveSessionSnapshot, Outcome } from '../../domain/types';
 import { ReviewShell } from '../../shared/layouts/ReviewShell';
 import { Button } from '../../shared/components/Button';
 import { LoadingSpinner } from '../../shared/components/StateViews';
@@ -114,6 +114,7 @@ function FlipCard({ question, answer, isFlipped, onFlip, animationEnabled }: Fli
 interface FilmstripProps {
   cards: ReviewCard[];
   activeIndex: number;
+  outcomes: Record<number, Outcome>;
   onSelect: (index: number) => void;
 }
 
@@ -126,7 +127,7 @@ function clampIndex(index: number, total: number) {
   return Math.min(Math.max(index, 0), total - 1);
 }
 
-function Filmstrip({ cards, activeIndex, onSelect }: FilmstripProps) {
+function Filmstrip({ cards, activeIndex, outcomes, onSelect }: FilmstripProps) {
   const dragOffsetRef = useRef(0);
   const dragStartXRef = useRef(0);
   const activeIndexRef = useRef(activeIndex);
@@ -244,7 +245,7 @@ function Filmstrip({ cards, activeIndex, onSelect }: FilmstripProps) {
       </div>
 
       <div
-        className="relative h-20 overflow-hidden rounded-full border border-app-border/60 bg-app-surface/70 px-6"
+        className="relative h-20 overflow-hidden rounded-full bg-app-surface/70 px-6"
         onPointerDown={handlePointerDown}
         onPointerMove={handlePointerMove}
         onPointerUp={handlePointerUp}
@@ -253,7 +254,6 @@ function Filmstrip({ cards, activeIndex, onSelect }: FilmstripProps) {
         style={{ touchAction: 'pan-x' }}
         aria-label="Card scrubber"
       >
-        <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_center,_rgba(255,255,255,0.14),_transparent_62%)]" />
         <div className="pointer-events-none absolute inset-y-3 left-1/2 w-px -translate-x-1/2 bg-app-nav/20" />
 
         <div
@@ -266,9 +266,19 @@ function Filmstrip({ cards, activeIndex, onSelect }: FilmstripProps) {
           {cards.map((card, index) => {
             const distanceFromCenter = Math.abs(index - activeIndex - (dragOffset / SCRUBBER_BAR_STEP));
             const proximity = Math.max(0, 1 - (distanceFromCenter / 6));
-            const isActive = distanceFromCenter < 0.35;
+            const isActive = index === activeIndex;
             const opacity = 0.08 + (proximity * 0.92);
             const scale = 0.35 + (proximity * 0.65);
+            const outcome = outcomes[card.id];
+            const backgroundColor = isActive
+              ? '#3F51B5'
+              : outcome === 'correct'
+                ? '#4CAF50'
+                : outcome === 'incorrect'
+                  ? '#F44336'
+                  : outcome === 'flagged'
+                    ? '#FFC107'
+                    : 'rgba(255, 255, 255, 0.34)';
 
             return (
               <button
@@ -283,15 +293,14 @@ function Filmstrip({ cards, activeIndex, onSelect }: FilmstripProps) {
                     onSelect(index);
                   }
                 }}
-                className="relative shrink-0 rounded-full transition-[opacity,transform,background-color,box-shadow] duration-150 ease-out focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-app-nav/50"
+                className="relative shrink-0 rounded-full transition-[opacity,transform,background-color] duration-150 ease-out focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-app-nav/50"
                 style={{
                   width: `${SCRUBBER_BAR_WIDTH}px`,
                   height: `${SCRUBBER_BAR_HEIGHT}px`,
                   marginRight: index === cards.length - 1 ? 0 : `${SCRUBBER_BAR_GAP}px`,
                   opacity,
                   transform: `scaleY(${scale})`,
-                  backgroundColor: isActive ? '#3F51B5' : 'rgba(255, 255, 255, 0.34)',
-                  boxShadow: isActive ? '0 0 0 1px rgba(63, 81, 181, 0.55), 0 0 18px rgba(63, 81, 181, 0.28)' : 'none',
+                  backgroundColor,
                 }}
                 aria-label={`Go to card ${index + 1}`}
                 aria-pressed={index === activeIndex}
@@ -541,9 +550,7 @@ export function ReviewPage({ mode = 'full', seedCardIds }: { mode?: SessionMode;
   const correctCount = getCorrectCount(state.outcomes);
   const incorrectCount = getIncorrectCount(state.outcomes);
   const flaggedCount = getFlaggedCount(state.outcomes);
-  const currentProgress = state.isComplete
-    ? state.totalCards
-    : Math.min(answered + 1, state.totalCards);
+  const currentProgress = answered;
 
   if (pageStatus === 'loading' || pageStatus === 'completing') {
     return (
@@ -584,6 +591,7 @@ export function ReviewPage({ mode = 'full', seedCardIds }: { mode?: SessionMode;
             <Filmstrip
               cards={state.queue}
               activeIndex={state.currentIndex}
+              outcomes={state.outcomes}
               onSelect={navigateToCard}
             />
 

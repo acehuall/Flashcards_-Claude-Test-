@@ -43,15 +43,15 @@ export function buildInitialState(
 export function buildStateFromSnapshot(snapshot: ActiveSessionSnapshot): ReviewState {
   return {
     queue: snapshot.queue,
-    currentIndex: snapshot.currentIndex,
+    currentIndex: Math.min(Math.max(snapshot.currentIndex, 0), Math.max(snapshot.queue.length - 1, 0)),
     isFlipped: false,
     outcomes: snapshot.outcomes,
     flaggedCardIds: snapshot.flaggedCardIds,
     sessionId: snapshot.sessionId,
     setId: snapshot.setId,
     mode: snapshot.mode,
-    isComplete: false,
-    totalCards: snapshot.queue.length + Object.keys(snapshot.outcomes).length,
+    isComplete: Object.keys(snapshot.outcomes).length === snapshot.queue.length,
+    totalCards: snapshot.queue.length,
   };
 }
 
@@ -79,6 +79,23 @@ export function getFlaggedCount(outcomes: Record<number, Outcome>): number {
   return Object.values(outcomes).filter((o) => o === 'flagged').length;
 }
 
+function findNextUnmarkedIndex(
+  queue: ReviewCard[],
+  outcomes: Record<number, Outcome>,
+  currentIndex: number,
+): number | null {
+  if (queue.length === 0) return null;
+
+  for (let offset = 1; offset <= queue.length; offset += 1) {
+    const nextIndex = (currentIndex + offset) % queue.length;
+    if (!(queue[nextIndex].id in outcomes)) {
+      return nextIndex;
+    }
+  }
+
+  return null;
+}
+
 // ─── Reducer ──────────────────────────────────────────────────────────────────
 
 export function reviewReducer(
@@ -97,17 +114,15 @@ export function reviewReducer(
       if (!card) return state;
 
       const newOutcomes = { ...state.outcomes, [card.id]: 'correct' as Outcome };
-      const newQueue = state.queue.filter((_, i) => i !== state.currentIndex);
-      const isComplete = newQueue.length === 0;
+      const isComplete = Object.keys(newOutcomes).length === state.queue.length;
+      const nextUnmarkedIndex = findNextUnmarkedIndex(state.queue, newOutcomes, state.currentIndex);
 
       return {
         ...state,
-        queue: newQueue,
         isFlipped: false,
         outcomes: newOutcomes,
         isComplete,
-        // currentIndex stays — the next card shifts into the same slot
-        currentIndex: Math.min(state.currentIndex, newQueue.length - 1),
+        currentIndex: nextUnmarkedIndex ?? state.currentIndex,
       };
     }
 
@@ -116,16 +131,15 @@ export function reviewReducer(
       if (!card) return state;
 
       const newOutcomes = { ...state.outcomes, [card.id]: 'incorrect' as Outcome };
-      const newQueue = state.queue.filter((_, i) => i !== state.currentIndex);
-      const isComplete = newQueue.length === 0;
+      const isComplete = Object.keys(newOutcomes).length === state.queue.length;
+      const nextUnmarkedIndex = findNextUnmarkedIndex(state.queue, newOutcomes, state.currentIndex);
 
       return {
         ...state,
-        queue: newQueue,
         isFlipped: false,
         outcomes: newOutcomes,
         isComplete,
-        currentIndex: Math.min(state.currentIndex, newQueue.length - 1),
+        currentIndex: nextUnmarkedIndex ?? state.currentIndex,
       };
     }
 
@@ -137,17 +151,16 @@ export function reviewReducer(
       const newFlagged = state.flaggedCardIds.includes(card.id)
         ? state.flaggedCardIds
         : [...state.flaggedCardIds, card.id];
-      const newQueue = state.queue.filter((_, i) => i !== state.currentIndex);
-      const isComplete = newQueue.length === 0;
+      const isComplete = Object.keys(newOutcomes).length === state.queue.length;
+      const nextUnmarkedIndex = findNextUnmarkedIndex(state.queue, newOutcomes, state.currentIndex);
 
       return {
         ...state,
-        queue: newQueue,
         isFlipped: false,
         outcomes: newOutcomes,
         flaggedCardIds: newFlagged,
         isComplete,
-        currentIndex: Math.min(state.currentIndex, newQueue.length - 1),
+        currentIndex: nextUnmarkedIndex ?? state.currentIndex,
       };
     }
 
