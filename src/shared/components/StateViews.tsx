@@ -75,7 +75,7 @@ interface PageHeaderProps {
 
 export function PageHeader({ title, subtitle, actions, back }: PageHeaderProps) {
   return (
-    <div className="flex items-start justify-between gap-4 mb-8">
+    <div className="mb-8 flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
       <div>
         {back && (
           <Link
@@ -88,10 +88,10 @@ export function PageHeader({ title, subtitle, actions, back }: PageHeaderProps) 
             {back.label}
           </Link>
         )}
-        <h1 className="text-2xl font-bold text-app-primary tracking-tight">{title}</h1>
-        {subtitle && <p className="mt-1 text-sm text-app-secondary">{subtitle}</p>}
+        <h1 className="text-xl font-bold tracking-tight text-app-primary sm:text-2xl">{title}</h1>
+        {subtitle && <p className="mt-1 text-xs text-app-secondary sm:text-sm">{subtitle}</p>}
       </div>
-      {actions && <div className="flex items-center gap-2 shrink-0">{actions}</div>}
+      {actions && <div className="w-full sm:w-auto sm:shrink-0">{actions}</div>}
     </div>
   );
 }
