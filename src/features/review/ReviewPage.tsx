@@ -19,6 +19,13 @@ import { useSettings } from '../../context/SettingsContext';
 import clsx from 'clsx';
 
 type PageStatus = 'loading' | 'resuming' | 'reviewing' | 'completing';
+type SwipeDirection = 'horizontal' | 'vertical';
+
+const SWIPE_LOCK_THRESHOLD = 10;
+const SWIPE_HORIZONTAL_THRESHOLD = 50;
+const SWIPE_VERTICAL_THRESHOLD = 30;
+const SWIPE_FEEDBACK_MAX_X = 60;
+const SWIPE_FEEDBACK_MAX_Y = 36;
 
 interface ResumePromptProps {
   onResume: () => void;
@@ -54,19 +61,79 @@ interface FlipCardProps {
   isFlipped: boolean;
   onFlip: () => void;
   animationEnabled: boolean;
+  onPointerDown: (event: React.PointerEvent<HTMLDivElement>) => void;
+  onPointerMove: (event: React.PointerEvent<HTMLDivElement>) => void;
+  onPointerUp: (event: React.PointerEvent<HTMLDivElement>) => void;
+  onPointerCancel: (event: React.PointerEvent<HTMLDivElement>) => void;
+  onClick: (event: React.MouseEvent<HTMLDivElement>) => void;
+  swipeOffset: { x: number; y: number };
+  swipeActive: boolean;
+  swipeDirection: SwipeDirection | null;
+  swipeEnabled: boolean;
 }
 
-function FlipCard({ question, answer, isFlipped, onFlip, animationEnabled }: FlipCardProps) {
+function FlipCard({
+  question,
+  answer,
+  isFlipped,
+  onFlip,
+  animationEnabled,
+  onPointerDown,
+  onPointerMove,
+  onPointerUp,
+  onPointerCancel,
+  onClick,
+  swipeOffset,
+  swipeActive,
+  swipeDirection,
+  swipeEnabled,
+}: FlipCardProps) {
   return (
     <div
       className="relative w-full flex-1 cursor-pointer select-none"
-      style={{ perspective: '1000px', minHeight: '260px', maxHeight: '460px' }}
-      onClick={onFlip}
+      style={{
+        perspective: '1000px',
+        minHeight: '260px',
+        maxHeight: '460px',
+        touchAction: swipeEnabled ? 'none' : 'auto',
+        transform: `translate3d(${swipeOffset.x}px, ${swipeOffset.y}px, 0) rotate(${swipeOffset.x * 0.05}deg)`,
+        transition: swipeActive ? 'none' : 'transform 180ms ease-out',
+      }}
+      onClick={onClick}
+      onPointerDown={onPointerDown}
+      onPointerMove={onPointerMove}
+      onPointerUp={onPointerUp}
+      onPointerCancel={onPointerCancel}
       onKeyDown={(e) => { if (e.key === ' ' || e.key === 'Enter') { e.preventDefault(); onFlip(); } }}
       tabIndex={0}
       role="button"
       aria-label={isFlipped ? 'Card showing answer. Press Enter to flip back.' : 'Card showing question. Press Enter to reveal answer.'}
     >
+      {swipeEnabled && swipeDirection && isFlipped && (
+        <div className="pointer-events-none absolute inset-0 z-10 overflow-hidden rounded-card">
+          <div
+            className={clsx(
+              'absolute inset-0 transition-opacity duration-150',
+              swipeDirection === 'horizontal'
+                ? swipeOffset.x >= 0
+                  ? 'bg-app-correct/12'
+                  : 'bg-app-incorrect/12'
+                : 'bg-app-flag/12',
+            )}
+            style={{
+              opacity: Math.min(
+                swipeDirection === 'horizontal'
+                  ? Math.abs(swipeOffset.x) / SWIPE_HORIZONTAL_THRESHOLD
+                  : swipeOffset.y < 0
+                    ? Math.abs(swipeOffset.y) / SWIPE_VERTICAL_THRESHOLD
+                    : 0,
+                1,
+              ),
+            }}
+          />
+        </div>
+      )}
+
       <div
         className={clsx(
           'relative w-full h-full',
@@ -109,6 +176,141 @@ function FlipCard({ question, answer, isFlipped, onFlip, animationEnabled }: Fli
       </div>
     </div>
   );
+}
+
+interface UseSwipeOptions {
+  enabled: boolean;
+  onTap: () => void;
+  onSwipeLeft: () => void;
+  onSwipeRight: () => void;
+  onSwipeUp: () => void;
+}
+
+function useSwipe({ enabled, onTap, onSwipeLeft, onSwipeRight, onSwipeUp }: UseSwipeOptions) {
+  const pointerIdRef = useRef<number | null>(null);
+  const startXRef = useRef(0);
+  const startYRef = useRef(0);
+  const directionRef = useRef<SwipeDirection | null>(null);
+  const suppressClickUntilRef = useRef(0);
+  const [swipeOffset, setSwipeOffset] = useState({ x: 0, y: 0 });
+  const [swipeActive, setSwipeActive] = useState(false);
+  const [swipeDirection, setSwipeDirection] = useState<SwipeDirection | null>(null);
+
+  const resetGesture = useCallback(() => {
+    pointerIdRef.current = null;
+    directionRef.current = null;
+    setSwipeOffset({ x: 0, y: 0 });
+    setSwipeActive(false);
+    setSwipeDirection(null);
+  }, []);
+
+  const handlePointerDown = useCallback((event: React.PointerEvent<HTMLDivElement>) => {
+    if (!enabled) return;
+    if (!event.isPrimary) return;
+    pointerIdRef.current = event.pointerId;
+    startXRef.current = event.clientX;
+    startYRef.current = event.clientY;
+    directionRef.current = null;
+    setSwipeActive(true);
+    setSwipeOffset({ x: 0, y: 0 });
+    setSwipeDirection(null);
+    event.currentTarget.setPointerCapture(event.pointerId);
+  }, [enabled]);
+
+  const handlePointerMove = useCallback((event: React.PointerEvent<HTMLDivElement>) => {
+    if (!enabled) return;
+    if (pointerIdRef.current !== event.pointerId) return;
+    const deltaX = event.clientX - startXRef.current;
+    const deltaY = event.clientY - startYRef.current;
+
+    if (!directionRef.current) {
+      if (Math.abs(deltaX) < SWIPE_LOCK_THRESHOLD && Math.abs(deltaY) < SWIPE_LOCK_THRESHOLD) {
+        return;
+      }
+
+      directionRef.current = Math.abs(deltaX) >= Math.abs(deltaY) ? 'horizontal' : 'vertical';
+      setSwipeDirection(directionRef.current);
+    }
+
+    const lockedDirection = directionRef.current;
+    setSwipeOffset({
+      x: lockedDirection === 'horizontal'
+        ? Math.max(Math.min(deltaX, SWIPE_FEEDBACK_MAX_X), -SWIPE_FEEDBACK_MAX_X)
+        : 0,
+      y: lockedDirection === 'vertical'
+        ? Math.max(Math.min(deltaY, SWIPE_FEEDBACK_MAX_Y), -SWIPE_FEEDBACK_MAX_Y)
+        : 0,
+    });
+  }, [enabled]);
+
+  const handlePointerUp = useCallback((event: React.PointerEvent<HTMLDivElement>) => {
+    if (!enabled) return;
+    if (pointerIdRef.current !== event.pointerId) return;
+
+    if (event.currentTarget.hasPointerCapture(event.pointerId)) {
+      event.currentTarget.releasePointerCapture(event.pointerId);
+    }
+
+    const deltaX = event.clientX - startXRef.current;
+    const deltaY = event.clientY - startYRef.current;
+    const lockedDirection = directionRef.current;
+
+    suppressClickUntilRef.current = Date.now() + 500;
+
+    if (!lockedDirection) {
+      onTap();
+      resetGesture();
+      return;
+    }
+
+    if (lockedDirection === 'horizontal') {
+      if (deltaX >= SWIPE_HORIZONTAL_THRESHOLD) {
+        onSwipeRight();
+      } else if (deltaX <= -SWIPE_HORIZONTAL_THRESHOLD) {
+        onSwipeLeft();
+      }
+    } else if (deltaY <= -SWIPE_VERTICAL_THRESHOLD) {
+      onSwipeUp();
+    }
+
+    resetGesture();
+  }, [enabled, onTap, onSwipeLeft, onSwipeRight, onSwipeUp, resetGesture]);
+
+  const handlePointerCancel = useCallback((event: React.PointerEvent<HTMLDivElement>) => {
+    if (!enabled) return;
+    if (pointerIdRef.current !== event.pointerId) return;
+    if (event.currentTarget.hasPointerCapture(event.pointerId)) {
+      event.currentTarget.releasePointerCapture(event.pointerId);
+    }
+    suppressClickUntilRef.current = Date.now() + 500;
+    resetGesture();
+  }, [enabled, resetGesture]);
+
+  const handleClick = useCallback((event: React.MouseEvent<HTMLDivElement>) => {
+    if (!enabled) {
+      onTap();
+      return;
+    }
+    const gestureJustFired = Date.now() < suppressClickUntilRef.current;
+    if (gestureJustFired) {
+      event.preventDefault();
+      event.stopPropagation();
+      return;
+    }
+    onTap();
+  }, [enabled, onTap]);
+
+  return {
+    handlePointerDown,
+    handlePointerMove,
+    handlePointerUp,
+    handlePointerCancel,
+    handleClick,
+    swipeOffset,
+    swipeActive,
+    swipeDirection,
+    resetGesture,
+  };
 }
 
 interface FilmstripProps {
@@ -510,6 +712,35 @@ export function ReviewPage({ mode = 'full', seedCardIds }: { mode?: SessionMode;
     dispatch({ type: 'NAVIGATE_TO', payload: index });
   }, []);
 
+  const swipeHandlers = useSwipe({
+    enabled: settings.swipeGestures,
+    onTap: () => dispatch({ type: 'FLIP' }),
+    onSwipeLeft: () => {
+      if (state.isFlipped && !state.outcomes[currentCard?.id ?? -1]) {
+        dispatch({ type: 'MARK_INCORRECT' });
+      }
+    },
+    onSwipeRight: () => {
+      if (state.isFlipped && !state.outcomes[currentCard?.id ?? -1]) {
+        dispatch({ type: 'MARK_CORRECT' });
+      }
+    },
+    onSwipeUp: () => {
+      if (state.isFlipped && !state.outcomes[currentCard?.id ?? -1]) {
+        dispatch({ type: 'MARK_FLAGGED' });
+      }
+    },
+  });
+  const resetSwipeGesture = swipeHandlers.resetGesture;
+
+  useEffect(() => {
+    resetSwipeGesture();
+  }, [state.currentIndex, resetSwipeGesture]);
+
+  useEffect(() => {
+    resetSwipeGesture();
+  }, [state.isFlipped, resetSwipeGesture]);
+
   // ─── Keyboard shortcuts ──────────────────────────────────────────────────────
 
   useEffect(() => {
@@ -602,6 +833,15 @@ export function ReviewPage({ mode = 'full', seedCardIds }: { mode?: SessionMode;
               isFlipped={state.isFlipped}
               onFlip={() => dispatch({ type: 'FLIP' })}
               animationEnabled={settings.flipAnimation}
+              onPointerDown={swipeHandlers.handlePointerDown}
+              onPointerMove={swipeHandlers.handlePointerMove}
+              onPointerUp={swipeHandlers.handlePointerUp}
+              onPointerCancel={swipeHandlers.handlePointerCancel}
+              onClick={swipeHandlers.handleClick}
+              swipeOffset={swipeHandlers.swipeOffset}
+              swipeActive={swipeHandlers.swipeActive}
+              swipeDirection={swipeHandlers.swipeDirection}
+              swipeEnabled={settings.swipeGestures}
             />
 
             {/* Actions */}
@@ -679,8 +919,11 @@ export function ReviewPage({ mode = 'full', seedCardIds }: { mode?: SessionMode;
             </div>
 
             {/* Keyboard hints */}
-            <p className="text-center text-xs text-app-secondary/50">
+            <p className="hidden text-center text-xs text-app-secondary/50 sm:block">
               Space to flip · ←/→ navigate · 1 incorrect · 2 flag · 3 correct
+            </p>
+            <p className="text-center text-xs text-app-secondary/50 sm:hidden">
+              Tap to flip · Swipe right correct · left incorrect · up to flag
             </p>
           </>
         ) : null}
