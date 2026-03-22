@@ -137,8 +137,6 @@ export function SettingsPage() {
               onChange={(v) => updateSettings({ swipeGestures: v })}
               label="Swipe gestures"
               description="Swipe cards left/right/up to mark outcomes"
-              badge="Phase B"
-              disabled
             />
           </div>
         </section>
