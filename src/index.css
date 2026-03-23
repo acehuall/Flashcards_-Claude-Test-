@@ -52,4 +52,14 @@
     backface-visibility: hidden;
     -webkit-backface-visibility: hidden;
   }
+
+  .review-card-gesture {
+    -webkit-tap-highlight-color: transparent;
+    will-change: transform;
+  }
+
+  .review-card-scrollable {
+    overscroll-behavior-y: contain;
+    touch-action: pan-y pinch-zoom;
+  }
 }

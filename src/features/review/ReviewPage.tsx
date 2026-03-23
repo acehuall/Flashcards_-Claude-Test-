@@ -17,16 +17,9 @@ import { LoadingSpinner } from '../../shared/components/StateViews';
 import { useToast } from '../../context/ToastContext';
 import { useSettings } from '../../context/SettingsContext';
 import clsx from 'clsx';
+import { useReviewSwipe } from './hooks/useReviewSwipe';
 
 type PageStatus = 'loading' | 'resuming' | 'reviewing' | 'completing';
-type SwipeDirection = 'horizontal' | 'vertical';
-
-const SWIPE_LOCK_THRESHOLD = 10;
-const SWIPE_HORIZONTAL_THRESHOLD = 50;
-const SWIPE_VERTICAL_THRESHOLD = 30;
-const SWIPE_FEEDBACK_MAX_X = 60;
-const SWIPE_FEEDBACK_MAX_Y = 36;
-
 interface ResumePromptProps {
   onResume: () => void;
   onRestart: () => void;
@@ -68,8 +61,10 @@ interface FlipCardProps {
   onClick: (event: React.MouseEvent<HTMLDivElement>) => void;
   swipeOffset: { x: number; y: number };
   swipeActive: boolean;
-  swipeDirection: SwipeDirection | null;
+  swipeAnimating: boolean;
+  swipeDirection: 'horizontal' | 'vertical' | null;
   swipeEnabled: boolean;
+  canSwipe: boolean;
 }
 
 function FlipCard({
@@ -85,31 +80,44 @@ function FlipCard({
   onClick,
   swipeOffset,
   swipeActive,
+  swipeAnimating,
   swipeDirection,
   swipeEnabled,
+  canSwipe
 }: FlipCardProps) {
+  const swipeFeedbackOpacity = swipeDirection === 'horizontal'
+    ? Math.min(Math.abs(swipeOffset.x) / 72, 1)
+    : swipeOffset.y < 0
+      ? Math.min(Math.abs(swipeOffset.y) / 64, 1)
+      : 0;
+
   return (
     <div
-      className="relative w-full flex-1 cursor-pointer select-none"
+      className="review-card-gesture relative w-full flex-1 cursor-pointer select-none"
       style={{
         perspective: '1000px',
         minHeight: '260px',
         maxHeight: '460px',
-        touchAction: swipeEnabled ? 'none' : 'auto',
-        transform: `translate3d(${swipeOffset.x}px, ${swipeOffset.y}px, 0) rotate(${swipeOffset.x * 0.05}deg)`,
-        transition: swipeActive ? 'none' : 'transform 180ms ease-out',
+        touchAction: swipeEnabled && canSwipe ? 'manipulation' : 'auto',
+        transform: `translate3d(${swipeOffset.x}px, ${swipeOffset.y}px, 0) rotate(${swipeOffset.x * 0.045}deg)`,
+        transition: swipeActive ? 'none' : swipeAnimating ? 'transform 180ms ease-out' : undefined,
       }}
       onClick={onClick}
       onPointerDown={onPointerDown}
       onPointerMove={onPointerMove}
       onPointerUp={onPointerUp}
       onPointerCancel={onPointerCancel}
-      onKeyDown={(e) => { if (e.key === ' ' || e.key === 'Enter') { e.preventDefault(); onFlip(); } }}
+      onKeyDown={(e) => {
+        if (e.key === ' ' || e.key === 'Enter') {
+          e.preventDefault();
+          onFlip();
+        }
+      }}
       tabIndex={0}
       role="button"
       aria-label={isFlipped ? 'Card showing answer. Press Enter to flip back.' : 'Card showing question. Press Enter to reveal answer.'}
     >
-      {swipeEnabled && swipeDirection && isFlipped && (
+      {canSwipe && swipeDirection && isFlipped && (
         <div className="pointer-events-none absolute inset-0 z-10 overflow-hidden rounded-card">
           <div
             className={clsx(
@@ -120,17 +128,17 @@ function FlipCard({
                   : 'bg-app-incorrect/12'
                 : 'bg-app-flag/12',
             )}
-            style={{
-              opacity: Math.min(
-                swipeDirection === 'horizontal'
-                  ? Math.abs(swipeOffset.x) / SWIPE_HORIZONTAL_THRESHOLD
-                  : swipeOffset.y < 0
-                    ? Math.abs(swipeOffset.y) / SWIPE_VERTICAL_THRESHOLD
-                    : 0,
-                1,
-              ),
-            }}
+            style={{ opacity: swipeFeedbackOpacity }}
           />
+
+          <div className="pointer-events-none absolute inset-x-4 top-4 flex items-center justify-between text-[11px] font-semibold uppercase tracking-[0.24em] text-white/70">
+            <span className={clsx('transition-opacity duration-150', swipeOffset.x > 12 ? 'opacity-100' : 'opacity-0')}>Correct</span>
+            <span className={clsx('transition-opacity duration-150', swipeOffset.x < -12 ? 'opacity-100' : 'opacity-0')}>Incorrect</span>
+          </div>
+
+          <div className="pointer-events-none absolute inset-x-0 top-4 flex justify-center text-[11px] font-semibold uppercase tracking-[0.24em] text-white/70">
+            <span className={clsx('transition-opacity duration-150', swipeOffset.y < -12 ? 'opacity-100' : 'opacity-0')}>Flag</span>
+          </div>
         </div>
       )}
 
@@ -145,172 +153,37 @@ function FlipCard({
           minHeight: '260px',
         }}
       >
-        {/* Question face */}
         <div
           className="absolute inset-0 rounded-card bg-app-card-q flex flex-col items-center justify-center p-8 overflow-auto"
+          data-review-card-scroll="true"
           style={{ backfaceVisibility: 'hidden', WebkitBackfaceVisibility: 'hidden' }}
         >
-          <p className="text-xl font-medium text-app-primary text-center leading-relaxed max-h-full overflow-y-auto">
+          <p className="review-card-scrollable text-xl font-medium text-app-primary text-center leading-relaxed max-h-full overflow-y-auto" data-review-card-scroll="true">
             {question}
           </p>
           {!isFlipped && (
             <p className="absolute bottom-4 text-xs text-app-secondary">
-              Click or press Space to reveal answer
+              Tap or press Space to reveal answer
             </p>
           )}
         </div>
 
-        {/* Answer face */}
         <div
           className="absolute inset-0 rounded-card bg-app-card-a border border-app-secondary/30 flex flex-col items-center justify-center p-8 overflow-auto"
+          data-review-card-scroll="true"
           style={{
             backfaceVisibility: 'hidden',
             WebkitBackfaceVisibility: 'hidden',
             transform: 'rotateY(180deg)',
           }}
         >
-          <p className="text-xl font-medium text-app-primary text-center leading-relaxed max-h-full overflow-y-auto">
+          <p className="review-card-scrollable text-xl font-medium text-app-primary text-center leading-relaxed max-h-full overflow-y-auto" data-review-card-scroll="true">
             {answer}
           </p>
         </div>
       </div>
     </div>
   );
-}
-
-interface UseSwipeOptions {
-  enabled: boolean;
-  onTap: () => void;
-  onSwipeLeft: () => void;
-  onSwipeRight: () => void;
-  onSwipeUp: () => void;
-}
-
-function useSwipe({ enabled, onTap, onSwipeLeft, onSwipeRight, onSwipeUp }: UseSwipeOptions) {
-  const pointerIdRef = useRef<number | null>(null);
-  const startXRef = useRef(0);
-  const startYRef = useRef(0);
-  const directionRef = useRef<SwipeDirection | null>(null);
-  const suppressClickUntilRef = useRef(0);
-  const [swipeOffset, setSwipeOffset] = useState({ x: 0, y: 0 });
-  const [swipeActive, setSwipeActive] = useState(false);
-  const [swipeDirection, setSwipeDirection] = useState<SwipeDirection | null>(null);
-
-  const resetGesture = useCallback(() => {
-    pointerIdRef.current = null;
-    directionRef.current = null;
-    setSwipeOffset({ x: 0, y: 0 });
-    setSwipeActive(false);
-    setSwipeDirection(null);
-  }, []);
-
-  const handlePointerDown = useCallback((event: React.PointerEvent<HTMLDivElement>) => {
-    if (!enabled) return;
-    if (!event.isPrimary) return;
-    pointerIdRef.current = event.pointerId;
-    startXRef.current = event.clientX;
-    startYRef.current = event.clientY;
-    directionRef.current = null;
-    setSwipeActive(true);
-    setSwipeOffset({ x: 0, y: 0 });
-    setSwipeDirection(null);
-    event.currentTarget.setPointerCapture(event.pointerId);
-  }, [enabled]);
-
-  const handlePointerMove = useCallback((event: React.PointerEvent<HTMLDivElement>) => {
-    if (!enabled) return;
-    if (pointerIdRef.current !== event.pointerId) return;
-    const deltaX = event.clientX - startXRef.current;
-    const deltaY = event.clientY - startYRef.current;
-
-    if (!directionRef.current) {
-      if (Math.abs(deltaX) < SWIPE_LOCK_THRESHOLD && Math.abs(deltaY) < SWIPE_LOCK_THRESHOLD) {
-        return;
-      }
-
-      directionRef.current = Math.abs(deltaX) >= Math.abs(deltaY) ? 'horizontal' : 'vertical';
-      setSwipeDirection(directionRef.current);
-    }
-
-    const lockedDirection = directionRef.current;
-    setSwipeOffset({
-      x: lockedDirection === 'horizontal'
-        ? Math.max(Math.min(deltaX, SWIPE_FEEDBACK_MAX_X), -SWIPE_FEEDBACK_MAX_X)
-        : 0,
-      y: lockedDirection === 'vertical'
-        ? Math.max(Math.min(deltaY, SWIPE_FEEDBACK_MAX_Y), -SWIPE_FEEDBACK_MAX_Y)
-        : 0,
-    });
-  }, [enabled]);
-
-  const handlePointerUp = useCallback((event: React.PointerEvent<HTMLDivElement>) => {
-    if (!enabled) return;
-    if (pointerIdRef.current !== event.pointerId) return;
-
-    if (event.currentTarget.hasPointerCapture(event.pointerId)) {
-      event.currentTarget.releasePointerCapture(event.pointerId);
-    }
-
-    const deltaX = event.clientX - startXRef.current;
-    const deltaY = event.clientY - startYRef.current;
-    const lockedDirection = directionRef.current;
-
-    suppressClickUntilRef.current = Date.now() + 500;
-
-    if (!lockedDirection) {
-      onTap();
-      resetGesture();
-      return;
-    }
-
-    if (lockedDirection === 'horizontal') {
-      if (deltaX >= SWIPE_HORIZONTAL_THRESHOLD) {
-        onSwipeRight();
-      } else if (deltaX <= -SWIPE_HORIZONTAL_THRESHOLD) {
-        onSwipeLeft();
-      }
-    } else if (deltaY <= -SWIPE_VERTICAL_THRESHOLD) {
-      onSwipeUp();
-    }
-
-    resetGesture();
-  }, [enabled, onTap, onSwipeLeft, onSwipeRight, onSwipeUp, resetGesture]);
-
-  const handlePointerCancel = useCallback((event: React.PointerEvent<HTMLDivElement>) => {
-    if (!enabled) return;
-    if (pointerIdRef.current !== event.pointerId) return;
-    if (event.currentTarget.hasPointerCapture(event.pointerId)) {
-      event.currentTarget.releasePointerCapture(event.pointerId);
-    }
-    suppressClickUntilRef.current = Date.now() + 500;
-    resetGesture();
-  }, [enabled, resetGesture]);
-
-  const handleClick = useCallback((event: React.MouseEvent<HTMLDivElement>) => {
-    if (!enabled) {
-      onTap();
-      return;
-    }
-    const gestureJustFired = Date.now() < suppressClickUntilRef.current;
-    if (gestureJustFired) {
-      event.preventDefault();
-      event.stopPropagation();
-      return;
-    }
-    onTap();
-  }, [enabled, onTap]);
-
-  return {
-    handlePointerDown,
-    handlePointerMove,
-    handlePointerUp,
-    handlePointerCancel,
-    handleClick,
-    swipeOffset,
-    swipeActive,
-    swipeDirection,
-    resetGesture,
-  };
 }
 
 interface FilmstripProps {
@@ -712,34 +585,23 @@ export function ReviewPage({ mode = 'full', seedCardIds }: { mode?: SessionMode;
     dispatch({ type: 'NAVIGATE_TO', payload: index });
   }, []);
 
-  const swipeHandlers = useSwipe({
+  const currentCard = state.queue[state.currentIndex];
+  const currentCardAnswered = currentCard ? Boolean(state.outcomes[currentCard.id]) : false;
+
+  const swipeHandlers = useReviewSwipe({
     enabled: settings.swipeGestures,
+    canSwipe: Boolean(state.isFlipped && currentCard && !currentCardAnswered),
     onTap: () => dispatch({ type: 'FLIP' }),
-    onSwipeLeft: () => {
-      if (state.isFlipped && !state.outcomes[currentCard?.id ?? -1]) {
-        dispatch({ type: 'MARK_INCORRECT' });
-      }
-    },
-    onSwipeRight: () => {
-      if (state.isFlipped && !state.outcomes[currentCard?.id ?? -1]) {
-        dispatch({ type: 'MARK_CORRECT' });
-      }
-    },
-    onSwipeUp: () => {
-      if (state.isFlipped && !state.outcomes[currentCard?.id ?? -1]) {
-        dispatch({ type: 'MARK_FLAGGED' });
-      }
-    },
+    onSwipeLeft: () => dispatch({ type: 'MARK_INCORRECT' }),
+    onSwipeRight: () => dispatch({ type: 'MARK_CORRECT' }),
+    onSwipeUp: () => dispatch({ type: 'MARK_FLAGGED' }),
   });
-  const resetSwipeGesture = swipeHandlers.resetGesture;
+
+  const resetSwipeGesture = swipeHandlers.reset;
 
   useEffect(() => {
     resetSwipeGesture();
-  }, [state.currentIndex, resetSwipeGesture]);
-
-  useEffect(() => {
-    resetSwipeGesture();
-  }, [state.isFlipped, resetSwipeGesture]);
+  }, [resetSwipeGesture, state.currentIndex, state.isFlipped]);
 
   // ─── Keyboard shortcuts ──────────────────────────────────────────────────────
 
@@ -776,7 +638,6 @@ export function ReviewPage({ mode = 'full', seedCardIds }: { mode?: SessionMode;
 
   // ─── Render ──────────────────────────────────────────────────────────────────
 
-  const currentCard = state.queue[state.currentIndex];
   const answered = Object.keys(state.outcomes).length;
   const correctCount = getCorrectCount(state.outcomes);
   const incorrectCount = getIncorrectCount(state.outcomes);
@@ -838,10 +699,12 @@ export function ReviewPage({ mode = 'full', seedCardIds }: { mode?: SessionMode;
               onPointerUp={swipeHandlers.handlePointerUp}
               onPointerCancel={swipeHandlers.handlePointerCancel}
               onClick={swipeHandlers.handleClick}
-              swipeOffset={swipeHandlers.swipeOffset}
-              swipeActive={swipeHandlers.swipeActive}
-              swipeDirection={swipeHandlers.swipeDirection}
+              swipeOffset={swipeHandlers.dragOffset}
+              swipeActive={swipeHandlers.isDragging}
+              swipeAnimating={swipeHandlers.isAnimating}
+              swipeDirection={swipeHandlers.swipeAxis}
               swipeEnabled={settings.swipeGestures}
+              canSwipe={Boolean(state.isFlipped && currentCard && !currentCardAnswered)}
             />
 
             {/* Actions */}
