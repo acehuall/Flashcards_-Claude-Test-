@@ -701,6 +701,7 @@ export function ReviewPage({ mode = 'full', seedCardIds }: { mode?: SessionMode;
 
             {/* Card */}
             <FlipCard
+            key={currentCard.id}
               question={currentCard.question}
               answer={currentCard.answer}
               isFlipped={state.isFlipped}
