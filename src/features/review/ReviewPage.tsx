@@ -166,13 +166,14 @@ function FlipCard({
         }}
       >
         <div
-          className="absolute inset-0 rounded-card bg-app-card-q flex flex-col items-center justify-center p-8 overflow-auto"
-          data-review-card-scroll="true"
+          className="absolute inset-0 rounded-card bg-app-card-q flex flex-col items-center justify-center p-8"
           style={{ backfaceVisibility: 'hidden', WebkitBackfaceVisibility: 'hidden' }}
         >
-          <p className="review-card-scrollable text-xl font-medium text-app-primary text-center leading-relaxed max-h-full overflow-y-auto" data-review-card-scroll="true">
-            {question}
-          </p>
+          <div className="review-card-scrollable max-h-full overflow-y-auto" data-review-card-scroll="true">
+            <p className="text-xl font-medium text-app-primary text-center leading-relaxed">
+              {question}
+            </p>
+          </div>
           {!isFlipped && (
             <p className="absolute bottom-4 text-xs text-app-secondary">
               Tap or press Space to reveal answer
@@ -181,17 +182,18 @@ function FlipCard({
         </div>
 
         <div
-          className="absolute inset-0 rounded-card bg-app-card-a border border-app-secondary/30 flex flex-col items-center justify-center p-8 overflow-auto"
-          data-review-card-scroll="true"
+          className="absolute inset-0 rounded-card bg-app-card-a border border-app-secondary/30 flex flex-col items-center justify-center p-8"
           style={{
             backfaceVisibility: 'hidden',
             WebkitBackfaceVisibility: 'hidden',
             transform: 'rotateY(180deg)',
           }}
         >
-          <p className="review-card-scrollable text-xl font-medium text-app-primary text-center leading-relaxed max-h-full overflow-y-auto" data-review-card-scroll="true">
-            {answer}
-          </p>
+          <div className="review-card-scrollable max-h-full overflow-y-auto" data-review-card-scroll="true">
+            <p className="text-xl font-medium text-app-primary text-center leading-relaxed">
+              {answer}
+            </p>
+          </div>
         </div>
       </div>
     </div>
