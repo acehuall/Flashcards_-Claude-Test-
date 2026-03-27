@@ -58,6 +58,10 @@ interface FlipCardProps {
   onPointerMove: (event: React.PointerEvent<HTMLDivElement>) => void;
   onPointerUp: (event: React.PointerEvent<HTMLDivElement>) => void;
   onPointerCancel: (event: React.PointerEvent<HTMLDivElement>) => void;
+  onTouchStart: (event: React.TouchEvent<HTMLDivElement>) => void;
+  onTouchMove: (event: React.TouchEvent<HTMLDivElement>) => void;
+  onTouchEnd: (event: React.TouchEvent<HTMLDivElement>) => void;
+  onTouchCancel: (event: React.TouchEvent<HTMLDivElement>) => void;
   onClick: (event: React.MouseEvent<HTMLDivElement>) => void;
   swipeOffset: { x: number; y: number };
   swipeActive: boolean;
@@ -77,6 +81,10 @@ function FlipCard({
   onPointerMove,
   onPointerUp,
   onPointerCancel,
+  onTouchStart,
+  onTouchMove,
+  onTouchEnd,
+  onTouchCancel,
   onClick,
   swipeOffset,
   swipeActive,
@@ -98,7 +106,7 @@ function FlipCard({
         perspective: '1000px',
         minHeight: '260px',
         maxHeight: '460px',
-        touchAction: swipeEnabled && canSwipe ? 'manipulation' : 'auto',
+        touchAction: swipeEnabled && canSwipe ? 'pan-y pinch-zoom' : 'auto',
         transform: `translate3d(${swipeOffset.x}px, ${swipeOffset.y}px, 0) rotate(${swipeOffset.x * 0.045}deg)`,
         transition: swipeActive ? 'none' : swipeAnimating ? 'transform 180ms ease-out' : undefined,
       }}
@@ -107,6 +115,10 @@ function FlipCard({
       onPointerMove={onPointerMove}
       onPointerUp={onPointerUp}
       onPointerCancel={onPointerCancel}
+      onTouchStart={onTouchStart}
+      onTouchMove={onTouchMove}
+      onTouchEnd={onTouchEnd}
+      onTouchCancel={onTouchCancel}
       onKeyDown={(e) => {
         if (e.key === ' ' || e.key === 'Enter') {
           e.preventDefault();
@@ -698,6 +710,10 @@ export function ReviewPage({ mode = 'full', seedCardIds }: { mode?: SessionMode;
               onPointerMove={swipeHandlers.handlePointerMove}
               onPointerUp={swipeHandlers.handlePointerUp}
               onPointerCancel={swipeHandlers.handlePointerCancel}
+              onTouchStart={swipeHandlers.handleTouchStart}
+              onTouchMove={swipeHandlers.handleTouchMove}
+              onTouchEnd={swipeHandlers.handleTouchEnd}
+              onTouchCancel={swipeHandlers.handleTouchCancel}
               onClick={swipeHandlers.handleClick}
               swipeOffset={swipeHandlers.dragOffset}
               swipeActive={swipeHandlers.isDragging}
@@ -786,7 +802,7 @@ export function ReviewPage({ mode = 'full', seedCardIds }: { mode?: SessionMode;
               Space to flip · ←/→ navigate · 1 incorrect · 2 flag · 3 correct
             </p>
             <p className="text-center text-xs text-app-secondary/50 sm:hidden">
-              Tap to flip · Swipe right correct · left incorrect · up to flag
+              Tap to flip · Swipe right correct · left incorrect · flag with button
             </p>
           </>
         ) : null}

@@ -12,6 +12,7 @@ const SETTLE_DURATION_MS = 180;
 
 type GestureIntent = 'idle' | 'horizontal' | 'vertical' | 'scroll';
 export type SwipeAxis = 'horizontal' | 'vertical';
+type InteractionInputType = 'mouse' | 'touch' | 'pen' | 'unknown';
 
 export interface ReviewSwipeState {
   offset: { x: number; y: number };
@@ -72,8 +73,12 @@ export function useReviewSwipe({
   onSwipeUp,
 }: UseReviewSwipeOptions) {
   const pointerIdRef = useRef<number | null>(null);
+  const touchIdRef = useRef<number | null>(null);
   const startXRef = useRef(0);
   const startYRef = useRef(0);
+  const lastXRef = useRef(0);
+  const lastYRef = useRef(0);
+  const interactionInputRef = useRef<InteractionInputType>('unknown');
   const intentRef = useRef<GestureIntent>('idle');
   const movedPastTapSlopRef = useRef(false);
   const startTargetRef = useRef<EventTarget | null>(null);
@@ -99,7 +104,9 @@ export function useReviewSwipe({
   const reset = useCallback(() => {
     clearAnimationTimer();
     pointerIdRef.current = null;
+    touchIdRef.current = null;
     intentRef.current = 'idle';
+    interactionInputRef.current = 'unknown';
     movedPastTapSlopRef.current = false;
     startTargetRef.current = null;
     containerWidthRef.current = 0;
@@ -115,16 +122,25 @@ export function useReviewSwipe({
 
   useEffect(() => reset, [reset]);
 
-  const handlePointerDown = useCallback((event: React.PointerEvent<HTMLElement>) => {
-    if (!enabled || !event.isPrimary || event.button !== 0 || isSwipeCommitRef.current) return;
+  const beginInteraction = useCallback((params: {
+    clientX: number;
+    clientY: number;
+    target: EventTarget | null;
+    currentTarget: HTMLElement;
+    inputType: InteractionInputType;
+  }) => {
+    const { clientX, clientY, target, currentTarget, inputType } = params;
+    if (!enabled || isSwipeCommitRef.current) return;
 
-    pointerIdRef.current = event.pointerId;
-    startXRef.current = event.clientX;
-    startYRef.current = event.clientY;
+    startXRef.current = clientX;
+    startYRef.current = clientY;
+    lastXRef.current = clientX;
+    lastYRef.current = clientY;
+    interactionInputRef.current = inputType;
     intentRef.current = 'idle';
     movedPastTapSlopRef.current = false;
-    startTargetRef.current = event.target;
-    containerWidthRef.current = event.currentTarget.getBoundingClientRect().width;
+    startTargetRef.current = target;
+    containerWidthRef.current = currentTarget.getBoundingClientRect().width;
     suppressClickRef.current = false;
 
     setState({
@@ -136,11 +152,19 @@ export function useReviewSwipe({
     });
   }, [enabled]);
 
-  const handlePointerMove = useCallback((event: React.PointerEvent<HTMLElement>) => {
-    if (!enabled || pointerIdRef.current !== event.pointerId || isSwipeCommitRef.current) return;
+  const moveInteraction = useCallback((params: {
+    clientX: number;
+    clientY: number;
+    currentTarget: HTMLElement;
+  }) => {
+    const { clientX, clientY, currentTarget } = params;
+    if (!enabled || isSwipeCommitRef.current) return;
 
-    const deltaX = event.clientX - startXRef.current;
-    const deltaY = event.clientY - startYRef.current;
+    lastXRef.current = clientX;
+    lastYRef.current = clientY;
+
+    const deltaX = clientX - startXRef.current;
+    const deltaY = clientY - startYRef.current;
     const absX = Math.abs(deltaX);
     const absY = Math.abs(deltaY);
 
@@ -158,16 +182,15 @@ export function useReviewSwipe({
         return;
       }
 
-      const scrollableAncestor = findScrollableAncestor(startTargetRef.current, event.currentTarget);
+      const scrollableAncestor = findScrollableAncestor(startTargetRef.current, currentTarget);
       const horizontalIntent = absX > absY * 1.15;
       const upwardIntent = deltaY < 0 && absY > absX * 1.15;
+      const allowVerticalSwipe = interactionInputRef.current !== 'touch';
 
       if (canSwipe && horizontalIntent) {
         intentRef.current = 'horizontal';
-        event.currentTarget.setPointerCapture(event.pointerId);
-      } else if (canSwipe && upwardIntent && !canScrollInGestureDirection(scrollableAncestor, deltaY)) {
+      } else if (canSwipe && allowVerticalSwipe && upwardIntent && !canScrollInGestureDirection(scrollableAncestor, deltaY)) {
         intentRef.current = 'vertical';
-        event.currentTarget.setPointerCapture(event.pointerId);
       } else {
         intentRef.current = 'scroll';
         return;
@@ -238,23 +261,18 @@ export function useReviewSwipe({
     }, SWIPE_OUT_DURATION_MS);
   }, [clearAnimationTimer, reset]);
 
-  const releaseCaptureIfNeeded = useCallback((event: React.PointerEvent<HTMLElement>) => {
-    if (event.currentTarget.hasPointerCapture(event.pointerId)) {
-      event.currentTarget.releasePointerCapture(event.pointerId);
-    }
-  }, []);
+  const endInteraction = useCallback(() => {
+    if (!enabled || isSwipeCommitRef.current) return;
 
-  const finishInteraction = useCallback((event: React.PointerEvent<HTMLElement>) => {
-    if (!enabled || pointerIdRef.current !== event.pointerId || isSwipeCommitRef.current) return;
-
-    const deltaX = event.clientX - startXRef.current;
-    const deltaY = event.clientY - startYRef.current;
+    const deltaX = lastXRef.current - startXRef.current;
+    const deltaY = lastYRef.current - startYRef.current;
     const intent = intentRef.current;
 
-    releaseCaptureIfNeeded(event);
     pointerIdRef.current = null;
+    touchIdRef.current = null;
     startTargetRef.current = null;
     intentRef.current = 'idle';
+    interactionInputRef.current = 'unknown';
 
     if (intent === 'horizontal' && canSwipe) {
       if (deltaX >= HORIZONTAL_SWIPE_THRESHOLD) {
@@ -290,18 +308,114 @@ export function useReviewSwipe({
 
     suppressClickRef.current = true;
     reset();
-  }, [animateSwipeOut, animateToRest, canSwipe, enabled, onSwipeLeft, onSwipeRight, onSwipeUp, onTap, releaseCaptureIfNeeded, reset]);
+  }, [animateSwipeOut, animateToRest, canSwipe, enabled, onSwipeLeft, onSwipeRight, onSwipeUp, onTap, reset]);
+
+  const cancelInteraction = useCallback(() => {
+    if (isSwipeCommitRef.current) return;
+    suppressClickRef.current = true;
+    reset();
+  }, [reset]);
+
+  const handlePointerDown = useCallback((event: React.PointerEvent<HTMLElement>) => {
+    if (!enabled || !event.isPrimary || isSwipeCommitRef.current) return;
+    if (event.pointerType === 'mouse' && event.button !== 0) return;
+
+    pointerIdRef.current = event.pointerId;
+    touchIdRef.current = null;
+    beginInteraction({
+      clientX: event.clientX,
+      clientY: event.clientY,
+      target: event.target,
+      currentTarget: event.currentTarget,
+      inputType: event.pointerType === 'mouse' || event.pointerType === 'touch' || event.pointerType === 'pen'
+        ? event.pointerType
+        : 'unknown',
+    });
+  }, [beginInteraction, enabled]);
+
+  const handlePointerMove = useCallback((event: React.PointerEvent<HTMLElement>) => {
+    if (pointerIdRef.current !== event.pointerId) return;
+    const previousIntent = intentRef.current;
+
+    moveInteraction({
+      clientX: event.clientX,
+      clientY: event.clientY,
+      currentTarget: event.currentTarget,
+    });
+
+    const currentIntent = intentRef.current;
+    if (
+      (previousIntent === 'idle' || previousIntent === 'scroll')
+      && (currentIntent === 'horizontal' || currentIntent === 'vertical')
+      && !event.currentTarget.hasPointerCapture(event.pointerId)
+    ) {
+      event.currentTarget.setPointerCapture(event.pointerId);
+    }
+  }, [moveInteraction]);
 
   const handlePointerUp = useCallback((event: React.PointerEvent<HTMLElement>) => {
-    finishInteraction(event);
-  }, [finishInteraction]);
+    if (pointerIdRef.current !== event.pointerId) return;
+    if (event.currentTarget.hasPointerCapture(event.pointerId)) {
+      event.currentTarget.releasePointerCapture(event.pointerId);
+    }
+    endInteraction();
+  }, [endInteraction]);
 
   const handlePointerCancel = useCallback((event: React.PointerEvent<HTMLElement>) => {
-    if (pointerIdRef.current !== event.pointerId || isSwipeCommitRef.current) return;
-    suppressClickRef.current = true;
-    releaseCaptureIfNeeded(event);
-    reset();
-  }, [releaseCaptureIfNeeded, reset]);
+    if (pointerIdRef.current !== event.pointerId) return;
+    if (event.currentTarget.hasPointerCapture(event.pointerId)) {
+      event.currentTarget.releasePointerCapture(event.pointerId);
+    }
+    cancelInteraction();
+  }, [cancelInteraction]);
+
+  const handleTouchStart = useCallback((event: React.TouchEvent<HTMLElement>) => {
+    if (!enabled || isSwipeCommitRef.current || pointerIdRef.current !== null || touchIdRef.current !== null) return;
+    const touch = event.changedTouches[0];
+    if (!touch) return;
+
+    touchIdRef.current = touch.identifier;
+    beginInteraction({
+      clientX: touch.clientX,
+      clientY: touch.clientY,
+      target: event.target,
+      currentTarget: event.currentTarget,
+      inputType: 'touch',
+    });
+  }, [beginInteraction, enabled]);
+
+  const handleTouchMove = useCallback((event: React.TouchEvent<HTMLElement>) => {
+    if (touchIdRef.current === null) return;
+    const touch = Array.from(event.changedTouches).find((entry) => entry.identifier === touchIdRef.current);
+    if (!touch) return;
+
+    moveInteraction({
+      clientX: touch.clientX,
+      clientY: touch.clientY,
+      currentTarget: event.currentTarget,
+    });
+
+    if (intentRef.current === 'horizontal') {
+      event.preventDefault();
+    }
+  }, [moveInteraction]);
+
+  const handleTouchEnd = useCallback((event: React.TouchEvent<HTMLElement>) => {
+    if (touchIdRef.current === null) return;
+    const touch = Array.from(event.changedTouches).find((entry) => entry.identifier === touchIdRef.current);
+    if (!touch) return;
+
+    lastXRef.current = touch.clientX;
+    lastYRef.current = touch.clientY;
+    endInteraction();
+  }, [endInteraction]);
+
+  const handleTouchCancel = useCallback((event: React.TouchEvent<HTMLElement>) => {
+    if (touchIdRef.current === null) return;
+    const touch = Array.from(event.changedTouches).find((entry) => entry.identifier === touchIdRef.current);
+    if (!touch) return;
+    cancelInteraction();
+  }, [cancelInteraction]);
 
   const handleClick = useCallback((event: React.MouseEvent<HTMLElement>) => {
     if (isSwipeCommitRef.current || suppressClickRef.current) {
@@ -330,6 +444,10 @@ export function useReviewSwipe({
     handlePointerMove,
     handlePointerUp,
     handlePointerCancel,
+    handleTouchStart,
+    handleTouchMove,
+    handleTouchEnd,
+    handleTouchCancel,
     handleClick,
     reset,
   };
