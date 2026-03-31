@@ -100,35 +100,34 @@ function FlipCard({
       : 0;
 
   return (
-    <div
-      className="review-card-gesture relative w-full flex-1 cursor-pointer select-none"
-      style={{
-        perspective: '1000px',
-        minHeight: '260px',
-        maxHeight: '460px',
-        touchAction: swipeEnabled && canSwipe ? 'pan-y pinch-zoom' : 'auto',
-        transform: `translate3d(${swipeOffset.x}px, ${swipeOffset.y}px, 0) rotate(${swipeOffset.x * 0.045}deg)`,
-        transition: swipeActive ? 'none' : swipeAnimating ? 'transform 180ms ease-out' : undefined,
-      }}
-      onClick={onClick}
-      onPointerDown={onPointerDown}
-      onPointerMove={onPointerMove}
-      onPointerUp={onPointerUp}
-      onPointerCancel={onPointerCancel}
-      onTouchStart={onTouchStart}
-      onTouchMove={onTouchMove}
-      onTouchEnd={onTouchEnd}
-      onTouchCancel={onTouchCancel}
-      onKeyDown={(e) => {
-        if (e.key === ' ' || e.key === 'Enter') {
-          e.preventDefault();
-          onFlip();
-        }
-      }}
-      tabIndex={0}
-      role="button"
-      aria-label={isFlipped ? 'Card showing answer. Press Enter to flip back.' : 'Card showing question. Press Enter to reveal answer.'}
-    >
+    <div className="review-card-settle w-full flex-1" style={{ minHeight: '260px', maxHeight: '460px' }}>
+      <div
+        className="review-card-gesture review-card-shell relative w-full h-full cursor-pointer select-none"
+        style={{
+          perspective: '1000px',
+          touchAction: swipeEnabled && canSwipe ? 'pan-y pinch-zoom' : 'auto',
+          transform: `translate3d(${swipeOffset.x}px, ${swipeOffset.y}px, 0) rotate(${swipeOffset.x * 0.045}deg)`,
+          transition: swipeActive ? 'none' : swipeAnimating ? 'transform 180ms ease-out' : undefined,
+        }}
+        onClick={onClick}
+        onPointerDown={onPointerDown}
+        onPointerMove={onPointerMove}
+        onPointerUp={onPointerUp}
+        onPointerCancel={onPointerCancel}
+        onTouchStart={onTouchStart}
+        onTouchMove={onTouchMove}
+        onTouchEnd={onTouchEnd}
+        onTouchCancel={onTouchCancel}
+        onKeyDown={(e) => {
+          if (e.key === ' ' || e.key === 'Enter') {
+            e.preventDefault();
+            onFlip();
+          }
+        }}
+        tabIndex={0}
+        role="button"
+        aria-label={isFlipped ? 'Card showing answer. Press Enter to flip back.' : 'Card showing question. Press Enter to reveal answer.'}
+      >
       {canSwipe && swipeDirection && isFlipped && (
         <div className="pointer-events-none absolute inset-0 z-10 overflow-hidden rounded-card">
           <div
@@ -166,7 +165,7 @@ function FlipCard({
         }}
       >
         <div
-          className="absolute inset-0 rounded-card bg-app-card-q flex flex-col items-center justify-center p-8"
+          className="review-card-face review-card-face--question absolute inset-0 rounded-card bg-app-card-q flex flex-col items-center justify-center p-8"
           style={{ backfaceVisibility: 'hidden', WebkitBackfaceVisibility: 'hidden' }}
         >
           <div className="review-card-scrollable max-h-full overflow-y-auto" data-review-card-scroll="true">
@@ -182,7 +181,7 @@ function FlipCard({
         </div>
 
         <div
-          className="absolute inset-0 rounded-card bg-app-card-a border border-app-border flex flex-col items-center justify-center p-8"
+          className="review-card-face review-card-face--answer absolute inset-0 rounded-card bg-app-card-a flex flex-col items-center justify-center p-8"
           style={{
             backfaceVisibility: 'hidden',
             WebkitBackfaceVisibility: 'hidden',
@@ -196,6 +195,7 @@ function FlipCard({
           </div>
         </div>
       </div>
+    </div>
     </div>
   );
 }
