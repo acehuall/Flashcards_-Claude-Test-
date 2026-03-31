@@ -210,119 +210,104 @@ interface FilmstripProps {
 const SCRUBBER_BAR_WIDTH = 12;
 const SCRUBBER_BAR_HEIGHT = 52;
 const SCRUBBER_BAR_GAP = 10;
-const SCRUBBER_BAR_STEP = SCRUBBER_BAR_WIDTH + SCRUBBER_BAR_GAP;
-
-function clampIndex(index: number, total: number) {
-  return Math.min(Math.max(index, 0), total - 1);
-}
 
 function Filmstrip({ cards, activeIndex, outcomes, onSelect }: FilmstripProps) {
-  const dragOffsetRef = useRef(0);
-  const dragStartXRef = useRef(0);
+  const viewportRef = useRef<HTMLDivElement | null>(null);
+  const barRefs = useRef<Array<HTMLButtonElement | null>>([]);
   const activeIndexRef = useRef(activeIndex);
-  const pointerIdRef = useRef<number | null>(null);
-  const animationFrameRef = useRef<number | null>(null);
-  const pendingClientXRef = useRef<number | null>(null);
-  const isDraggingRef = useRef(false);
-  const didDragRef = useRef(false);
-  const ignoreClickRef = useRef(false);
-  const [dragOffset, setDragOffset] = useState(0);
+  const rafRef = useRef<number | null>(null);
+  const isProgrammaticScrollRef = useRef(false);
+  const scrollTargetLeftRef = useRef<number | null>(null);
+  const programmaticResetTimeoutRef = useRef<number | null>(null);
+  const skipNextCenteringRef = useRef(false);
+  const hasInitialCenteringRef = useRef(false);
 
   useEffect(() => {
     activeIndexRef.current = activeIndex;
   }, [activeIndex]);
 
-  const updateSelectionFromOffset = useCallback((clientX: number) => {
-    const delta = clientX - dragStartXRef.current;
-    const stepShift = delta > 0
-      ? Math.floor(delta / SCRUBBER_BAR_STEP)
-      : Math.ceil(delta / SCRUBBER_BAR_STEP);
+  const selectClosestToCenter = useCallback(() => {
+    const viewport = viewportRef.current;
+    if (!viewport || cards.length === 0) return;
 
-    if (stepShift !== 0) {
-      const nextIndex = clampIndex(activeIndexRef.current - stepShift, cards.length);
-      const appliedShift = activeIndexRef.current - nextIndex;
+    const viewportRect = viewport.getBoundingClientRect();
+    const centerX = viewportRect.left + (viewportRect.width / 2);
 
-      if (appliedShift !== 0) {
-        activeIndexRef.current = nextIndex;
-        dragStartXRef.current += appliedShift * SCRUBBER_BAR_STEP;
-        onSelect(nextIndex);
+    let closestIndex = activeIndexRef.current;
+    let closestDistance = Number.POSITIVE_INFINITY;
+
+    for (let index = 0; index < cards.length; index += 1) {
+      const bar = barRefs.current[index];
+      if (!bar) continue;
+      const rect = bar.getBoundingClientRect();
+      const barCenterX = rect.left + (rect.width / 2);
+      const distance = Math.abs(barCenterX - centerX);
+      if (distance < closestDistance) {
+        closestDistance = distance;
+        closestIndex = index;
       }
     }
 
-    dragOffsetRef.current = clientX - dragStartXRef.current;
-    setDragOffset(dragOffsetRef.current);
+    if (closestIndex !== activeIndexRef.current) {
+      activeIndexRef.current = closestIndex;
+      skipNextCenteringRef.current = true;
+      onSelect(closestIndex);
+    }
   }, [cards.length, onSelect]);
 
-  const flushPendingPointerMove = useCallback(() => {
-    if (pendingClientXRef.current === null) return;
-    updateSelectionFromOffset(pendingClientXRef.current);
-    pendingClientXRef.current = null;
-    animationFrameRef.current = null;
-  }, [updateSelectionFromOffset]);
+  const scheduleSelectionSync = useCallback(() => {
+    if (rafRef.current !== null) return;
+    rafRef.current = requestAnimationFrame(() => {
+      rafRef.current = null;
+      if (isProgrammaticScrollRef.current) return;
+      selectClosestToCenter();
+    });
+  }, [selectClosestToCenter]);
 
-  const resetDrag = useCallback(() => {
-    if (animationFrameRef.current !== null) {
-      cancelAnimationFrame(animationFrameRef.current);
-      animationFrameRef.current = null;
+  const centerIndex = useCallback((index: number, behavior: ScrollBehavior) => {
+    const viewport = viewportRef.current;
+    const bar = barRefs.current[index];
+    if (!viewport || !bar) return;
+
+    const maxScrollLeft = Math.max(0, viewport.scrollWidth - viewport.clientWidth);
+    const targetLeft = Math.min(Math.max(0, bar.offsetLeft - ((viewport.clientWidth - bar.offsetWidth) / 2)), maxScrollLeft);
+    const needsScroll = Math.abs(viewport.scrollLeft - targetLeft) > 1;
+    if (!needsScroll) return;
+
+    isProgrammaticScrollRef.current = true;
+    scrollTargetLeftRef.current = targetLeft;
+    if (programmaticResetTimeoutRef.current !== null) {
+      window.clearTimeout(programmaticResetTimeoutRef.current);
     }
-    pendingClientXRef.current = null;
-    pointerIdRef.current = null;
-    isDraggingRef.current = false;
-    dragOffsetRef.current = 0;
-    setDragOffset(0);
+    programmaticResetTimeoutRef.current = window.setTimeout(() => {
+      isProgrammaticScrollRef.current = false;
+      scrollTargetLeftRef.current = null;
+      programmaticResetTimeoutRef.current = null;
+    }, 800);
+    viewport.scrollTo({ left: targetLeft, behavior });
   }, []);
 
-  const handlePointerDown = useCallback((event: React.PointerEvent<HTMLDivElement>) => {
-    if (cards.length <= 1) return;
-    pointerIdRef.current = event.pointerId;
-    isDraggingRef.current = true;
-    didDragRef.current = false;
-    ignoreClickRef.current = false;
-    pendingClientXRef.current = null;
-    dragStartXRef.current = event.clientX;
-    dragOffsetRef.current = 0;
-    setDragOffset(0);
-    event.currentTarget.setPointerCapture(event.pointerId);
-  }, [cards.length]);
+  useEffect(() => {
+    if (!hasInitialCenteringRef.current) {
+      hasInitialCenteringRef.current = true;
+      centerIndex(activeIndex, 'auto');
+      return;
+    }
 
-  const handlePointerMove = useCallback((event: React.PointerEvent<HTMLDivElement>) => {
-    if (!isDraggingRef.current || pointerIdRef.current !== event.pointerId) return;
-    if (Math.abs(event.clientX - dragStartXRef.current) > 4) {
-      didDragRef.current = true;
+    if (skipNextCenteringRef.current) {
+      skipNextCenteringRef.current = false;
+      return;
     }
-    pendingClientXRef.current = event.clientX;
-    if (animationFrameRef.current === null) {
-      animationFrameRef.current = requestAnimationFrame(flushPendingPointerMove);
-    }
-  }, [flushPendingPointerMove]);
 
-  const handlePointerUp = useCallback((event: React.PointerEvent<HTMLDivElement>) => {
-    if (pointerIdRef.current !== event.pointerId) return;
-    if (animationFrameRef.current !== null) {
-      flushPendingPointerMove();
-    }
-    if (event.currentTarget.hasPointerCapture(event.pointerId)) {
-      event.currentTarget.releasePointerCapture(event.pointerId);
-    }
-    ignoreClickRef.current = didDragRef.current;
-    resetDrag();
-  }, [flushPendingPointerMove, resetDrag]);
-
-  const handlePointerLeave = useCallback((event: React.PointerEvent<HTMLDivElement>) => {
-    if (!isDraggingRef.current || pointerIdRef.current !== event.pointerId) return;
-    if (animationFrameRef.current !== null) {
-      flushPendingPointerMove();
-    }
-    if (event.currentTarget.hasPointerCapture(event.pointerId)) {
-      event.currentTarget.releasePointerCapture(event.pointerId);
-    }
-    ignoreClickRef.current = didDragRef.current;
-    resetDrag();
-  }, [flushPendingPointerMove, resetDrag]);
+    centerIndex(activeIndex, 'smooth');
+  }, [activeIndex, cards.length, centerIndex]);
 
   useEffect(() => () => {
-    if (animationFrameRef.current !== null) {
-      cancelAnimationFrame(animationFrameRef.current);
+    if (rafRef.current !== null) {
+      cancelAnimationFrame(rafRef.current);
+    }
+    if (programmaticResetTimeoutRef.current !== null) {
+      window.clearTimeout(programmaticResetTimeoutRef.current);
     }
   }, []);
 
@@ -333,71 +318,86 @@ function Filmstrip({ cards, activeIndex, outcomes, onSelect }: FilmstripProps) {
         <span>{activeIndex + 1} / {cards.length}</span>
       </div>
 
-      <div
-        className="relative h-20 overflow-hidden rounded-full bg-app-surface border border-app-border px-6"
-        onPointerDown={handlePointerDown}
-        onPointerMove={handlePointerMove}
-        onPointerUp={handlePointerUp}
-        onPointerCancel={handlePointerUp}
-        onPointerLeave={handlePointerLeave}
-        style={{ touchAction: 'pan-x' }}
-        aria-label="Card scrubber"
-      >
+      <div className="relative h-20 overflow-hidden rounded-full bg-app-surface border border-app-border" aria-label="Card scrubber">
         <div className="pointer-events-none absolute inset-y-3 left-1/2 w-px -translate-x-1/2 bg-app-nav/20" />
 
         <div
-          className="absolute left-1/2 top-1/2 flex -translate-y-1/2 items-end"
+          ref={viewportRef}
+          className="h-full overflow-x-auto overflow-y-hidden"
+          onScroll={() => {
+            if (isProgrammaticScrollRef.current) {
+              const viewport = viewportRef.current;
+              const targetLeft = scrollTargetLeftRef.current;
+              if (viewport && targetLeft !== null && Math.abs(viewport.scrollLeft - targetLeft) <= 1) {
+                isProgrammaticScrollRef.current = false;
+                scrollTargetLeftRef.current = null;
+                if (programmaticResetTimeoutRef.current !== null) {
+                  window.clearTimeout(programmaticResetTimeoutRef.current);
+                  programmaticResetTimeoutRef.current = null;
+                }
+              }
+              return;
+            }
+            scheduleSelectionSync();
+          }}
+          onWheel={(event) => {
+            if (Math.abs(event.deltaY) <= Math.abs(event.deltaX)) return;
+            const viewport = viewportRef.current;
+            if (!viewport) return;
+            event.preventDefault();
+            viewport.scrollLeft += event.deltaY;
+          }}
           style={{
-            transform: `translate(${dragOffset - (activeIndex * SCRUBBER_BAR_STEP) - (SCRUBBER_BAR_WIDTH / 2)}px, -50%)`,
-            transition: isDraggingRef.current ? 'none' : 'transform 180ms ease-out',
+            touchAction: 'pan-x',
+            WebkitOverflowScrolling: 'touch',
+            scrollbarWidth: 'none',
+            msOverflowStyle: 'none',
           }}
         >
-          {cards.map((card, index) => {
-            const distanceFromCenter = Math.abs(index - activeIndex - (dragOffset / SCRUBBER_BAR_STEP));
-            const proximity = Math.max(0, 1 - (distanceFromCenter / 6));
-            const isActive = index === activeIndex;
-            const opacity = 0.08 + (proximity * 0.92);
-            const scale = 0.35 + (proximity * 0.65);
-            const outcome = outcomes[card.id];
-            const backgroundColor = isActive
-              ? 'rgb(var(--app-nav))'
-              : outcome === 'correct'
-                ? 'rgb(var(--app-correct))'
-                : outcome === 'incorrect'
-                  ? 'rgb(var(--app-incorrect))'
-                  : outcome === 'flagged'
-                    ? 'rgb(var(--app-flag))'
-                    : 'rgb(var(--app-border) / 0.85)';
+          <div
+            className="flex h-full items-center"
+            style={{ paddingLeft: `calc(50% - ${SCRUBBER_BAR_WIDTH / 2}px)`, paddingRight: `calc(50% - ${SCRUBBER_BAR_WIDTH / 2}px)` }}
+          >
+            {cards.map((card, index) => {
+              const distanceFromCenter = Math.abs(index - activeIndex);
+              const proximity = Math.max(0, 1 - (distanceFromCenter / 6));
+              const isActive = index === activeIndex;
+              const opacity = 0.08 + (proximity * 0.92);
+              const scale = 0.35 + (proximity * 0.65);
+              const outcome = outcomes[card.id];
+              const backgroundColor = isActive
+                ? 'rgb(var(--app-nav))'
+                : outcome === 'correct'
+                  ? 'rgb(var(--app-correct))'
+                  : outcome === 'incorrect'
+                    ? 'rgb(var(--app-incorrect))'
+                    : outcome === 'flagged'
+                      ? 'rgb(var(--app-flag))'
+                      : 'rgb(var(--app-border) / 0.85)';
 
-            return (
-              <button
-                key={card.id}
-                type="button"
-                onClick={() => {
-                  if (!isDraggingRef.current) {
-                    if (ignoreClickRef.current) {
-                      ignoreClickRef.current = false;
-                      return;
-                    }
-                    onSelect(index);
-                  }
-                }}
-                className="relative shrink-0 rounded-full transition-[opacity,transform,background-color] duration-150 ease-out focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-app-nav/50"
-                style={{
-                  width: `${SCRUBBER_BAR_WIDTH}px`,
-                  height: `${SCRUBBER_BAR_HEIGHT}px`,
-                  marginRight: index === cards.length - 1 ? 0 : `${SCRUBBER_BAR_GAP}px`,
-                  opacity,
-                  transform: `scaleY(${scale})`,
-                  backgroundColor,
-                }}
-                aria-label={`Go to card ${index + 1}`}
-                aria-pressed={index === activeIndex}
-              >
-                <span className="sr-only">Card {index + 1}</span>
-              </button>
-            );
-          })}
+              return (
+                <button
+                  key={card.id}
+                  ref={(node) => { barRefs.current[index] = node; }}
+                  type="button"
+                  onClick={() => onSelect(index)}
+                  className="relative shrink-0 rounded-full transition-[opacity,transform,background-color] duration-150 ease-out focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-app-nav/50"
+                  style={{
+                    width: `${SCRUBBER_BAR_WIDTH}px`,
+                    height: `${SCRUBBER_BAR_HEIGHT}px`,
+                    marginRight: index === cards.length - 1 ? 0 : `${SCRUBBER_BAR_GAP}px`,
+                    opacity,
+                    transform: `scaleY(${scale})`,
+                    backgroundColor,
+                  }}
+                  aria-label={`Go to card ${index + 1}`}
+                  aria-pressed={index === activeIndex}
+                >
+                  <span className="sr-only">Card {index + 1}</span>
+                </button>
+              );
+            })}
+          </div>
         </div>
       </div>
     </div>
