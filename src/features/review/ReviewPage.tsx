@@ -142,12 +142,12 @@ function FlipCard({
             style={{ opacity: swipeFeedbackOpacity }}
           />
 
-          <div className="pointer-events-none absolute inset-x-4 top-4 flex items-center justify-between text-[11px] font-semibold uppercase tracking-[0.24em] text-white/70">
+          <div className="pointer-events-none absolute inset-x-4 top-4 flex items-center justify-between text-[11px] font-semibold uppercase tracking-[0.24em] text-app-secondary/80">
             <span className={clsx('transition-opacity duration-150', swipeOffset.x > 12 ? 'opacity-100' : 'opacity-0')}>Correct</span>
             <span className={clsx('transition-opacity duration-150', swipeOffset.x < -12 ? 'opacity-100' : 'opacity-0')}>Incorrect</span>
           </div>
 
-          <div className="pointer-events-none absolute inset-x-0 top-4 flex justify-center text-[11px] font-semibold uppercase tracking-[0.24em] text-white/70">
+          <div className="pointer-events-none absolute inset-x-0 top-4 flex justify-center text-[11px] font-semibold uppercase tracking-[0.24em] text-app-secondary/80">
             <span className={clsx('transition-opacity duration-150', swipeOffset.y < -12 ? 'opacity-100' : 'opacity-0')}>Flag</span>
           </div>
         </div>
@@ -334,7 +334,7 @@ function Filmstrip({ cards, activeIndex, outcomes, onSelect }: FilmstripProps) {
       </div>
 
       <div
-        className="relative h-20 overflow-hidden rounded-full bg-app-surface/70 px-6"
+        className="relative h-20 overflow-hidden rounded-full bg-app-surface border border-app-border px-6"
         onPointerDown={handlePointerDown}
         onPointerMove={handlePointerMove}
         onPointerUp={handlePointerUp}
@@ -360,14 +360,14 @@ function Filmstrip({ cards, activeIndex, outcomes, onSelect }: FilmstripProps) {
             const scale = 0.35 + (proximity * 0.65);
             const outcome = outcomes[card.id];
             const backgroundColor = isActive
-              ? '#3F51B5'
+              ? 'rgb(var(--app-nav))'
               : outcome === 'correct'
-                ? '#4CAF50'
+                ? 'rgb(var(--app-correct))'
                 : outcome === 'incorrect'
-                  ? '#F44336'
+                  ? 'rgb(var(--app-incorrect))'
                   : outcome === 'flagged'
-                    ? '#FFC107'
-                    : 'rgba(255, 255, 255, 0.34)';
+                    ? 'rgb(var(--app-flag))'
+                    : 'rgb(var(--app-border) / 0.85)';
 
             return (
               <button

@@ -2,6 +2,22 @@
 @tailwind components;
 @tailwind utilities;
 
+:root {
+  --app-bg: 15 17 23;
+  --app-bg-alt: 11 14 20;
+  --app-card-q: 32 44 69;
+  --app-card-a: 21 28 46;
+  --app-primary: 245 247 250;
+  --app-secondary: 152 162 179;
+  --app-correct: 34 197 94;
+  --app-incorrect: 239 68 68;
+  --app-flag: 251 191 36;
+  --app-nav: 76 99 210;
+  --app-nav-dark: 59 82 196;
+  --app-surface: 26 34 53;
+  --app-border: 42 53 84;
+}
+
 @layer base {
   *, *::before, *::after {
     box-sizing: border-box;
@@ -14,8 +30,12 @@
   }
 
   body {
-    background-color: #1A1C1E;
-    color: #FFFFFF;
+    background-color: rgb(var(--app-bg));
+    background-image:
+      radial-gradient(1100px circle at 15% -10%, rgb(var(--app-nav) / 0.22), transparent 54%),
+      radial-gradient(900px circle at 85% -20%, rgb(99 102 241 / 0.16), transparent 48%),
+      linear-gradient(180deg, rgb(var(--app-bg-alt)) 0%, rgb(var(--app-bg)) 38%, rgb(var(--app-bg)) 100%);
+    color: rgb(var(--app-primary));
     font-family: 'Roboto', 'Inter', system-ui, sans-serif;
     min-height: 100vh;
   }
@@ -29,17 +49,17 @@
     background: transparent;
   }
   ::-webkit-scrollbar-thumb {
-    background: #2E3135;
+    background: rgb(var(--app-border));
     border-radius: 999px;
   }
   ::-webkit-scrollbar-thumb:hover {
-    background: #909090;
+    background: rgb(var(--app-secondary));
   }
 
   /* Selection */
   ::selection {
-    background: #3F51B520;
-    color: #FFFFFF;
+    background: rgb(var(--app-nav) / 0.32);
+    color: rgb(var(--app-primary));
   }
 }
 

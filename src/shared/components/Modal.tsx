@@ -41,7 +41,7 @@ export function Modal({ open, onClose, title, children, maxWidth = 'md' }: Modal
     >
       {/* Backdrop */}
       <div
-        className="absolute inset-0 bg-black/60 backdrop-blur-sm animate-fade-in"
+        className="absolute inset-0 bg-app-bg-alt/80 backdrop-blur-sm animate-fade-in"
         onClick={onClose}
         aria-hidden="true"
       />
@@ -51,7 +51,7 @@ export function Modal({ open, onClose, title, children, maxWidth = 'md' }: Modal
         tabIndex={-1}
         className={clsx(
           'relative z-10 w-full bg-app-surface border border-app-border rounded-card',
-          'shadow-2xl animate-slide-up focus:outline-none',
+          'shadow-2xl shadow-black/50 animate-slide-up focus:outline-none',
           widthMap[maxWidth],
         )}
       >
@@ -102,7 +102,7 @@ export function ConfirmModal({
       <div className="flex justify-end gap-3">
         <button
           onClick={onCancel}
-          className="px-4 py-2 text-sm text-app-secondary hover:text-app-primary bg-app-surface border border-app-border rounded-pill transition-colors"
+          className="px-4 py-2 text-sm text-app-secondary hover:text-app-primary bg-app-bg-alt border border-app-border rounded-pill transition-colors"
         >
           Cancel
         </button>

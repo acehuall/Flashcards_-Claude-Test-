@@ -35,7 +35,7 @@ export function StandardShell({ children }: StandardShellProps) {
   return (
     <div className="min-h-screen bg-app-bg flex flex-col">
       {/* Top bar */}
-      <header className="sticky top-0 z-40 bg-app-bg/80 backdrop-blur border-b border-app-border">
+      <header className="sticky top-0 z-40 bg-app-bg-alt/85 backdrop-blur-md border-b border-app-border">
         <div className="max-w-5xl mx-auto px-6 h-14 flex items-center justify-between">
           <Link
             to="/"
@@ -57,8 +57,8 @@ export function StandardShell({ children }: StandardShellProps) {
                   clsx(
                     'flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm transition-colors',
                     isActive
-                      ? 'bg-app-nav/20 text-app-nav'
-                      : 'text-app-secondary hover:text-app-primary hover:bg-app-surface',
+                      ? 'bg-app-nav text-app-primary shadow-[0_0_0_1px_rgb(var(--app-nav-dark))_inset]'
+                      : 'text-app-secondary hover:text-app-primary hover:bg-app-surface/90',
                   )
                 }
               >
