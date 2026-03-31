@@ -167,15 +167,15 @@ function FlipCard({
           className="review-card-face review-card-face--question absolute inset-0 rounded-card bg-app-card-q p-8"
           style={{ backfaceVisibility: 'hidden', WebkitBackfaceVisibility: 'hidden' }}
         >
-          <div className="flex h-full flex-col">
-            <div className="review-card-scrollable flex-1 min-h-0 overflow-y-auto" data-review-card-scroll="true">
-              <div className="flex min-h-full flex-col justify-center">
+          <div className="review-card-face-content">
+            <div className="review-card-scrollable review-card-scroll-region" data-review-card-scroll="true">
+              <div className="review-card-face-center">
                 <p className="text-xl font-medium text-app-primary text-center leading-relaxed">
                   {question}
                 </p>
               </div>
             </div>
-            <div className="pt-4 text-center">
+            <div className="review-card-hint pointer-events-none" aria-hidden="true">
               {!isFlipped && (
                 <p className="text-xs text-app-secondary">
                   Tap or press Space to reveal answer
@@ -193,11 +193,13 @@ function FlipCard({
             transform: 'rotateY(180deg)',
           }}
         >
-          <div className="review-card-scrollable h-full overflow-y-auto" data-review-card-scroll="true">
-            <div className="flex min-h-full flex-col justify-center">
-              <p className="text-xl font-medium text-app-primary text-center leading-relaxed">
-                {answer}
-              </p>
+          <div className="review-card-face-content">
+            <div className="review-card-scrollable review-card-scroll-region" data-review-card-scroll="true">
+              <div className="review-card-face-center">
+                <p className="text-xl font-medium text-app-primary text-center leading-relaxed">
+                  {answer}
+                </p>
+              </div>
             </div>
           </div>
         </div>

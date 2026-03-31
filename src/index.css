@@ -103,8 +103,38 @@
   .review-card-face {
     position: relative;
     overflow: hidden;
-    border: 1px solid rgba(255, 255, 255, 0.08);
-    box-shadow: 0 8px 18px -12px rgba(0, 0, 0, 0.55);
+    border: 1px solid rgb(255 255 255 / 0.17);
+    box-shadow:
+      0 1px 0 rgb(255 255 255 / 0.07) inset,
+      0 16px 34px -22px rgb(0 0 0 / 0.72),
+      0 8px 16px -12px rgb(0 0 0 / 0.55);
+  }
+
+  .review-card-face-content {
+    position: relative;
+    height: 100%;
+  }
+
+  .review-card-scroll-region {
+    height: 100%;
+    overflow-y: auto;
+    padding-bottom: 2.25rem;
+  }
+
+  .review-card-face-center {
+    display: flex;
+    min-height: 100%;
+    flex-direction: column;
+    justify-content: center;
+  }
+
+  .review-card-hint {
+    position: absolute;
+    right: 0;
+    bottom: 0;
+    left: 0;
+    display: flex;
+    justify-content: center;
   }
 
   @keyframes review-card-settle {
