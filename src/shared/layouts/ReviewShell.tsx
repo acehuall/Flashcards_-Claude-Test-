@@ -23,7 +23,7 @@ export function ReviewShell({ children, exitTo, progress }: ReviewShellProps) {
   return (
     <div className="min-h-screen bg-app-bg flex flex-col">
       {/* Top progress bar + controls */}
-      <header className="sticky top-0 z-40 bg-app-bg border-b border-app-border/50">
+      <header className="sticky top-0 z-40 bg-app-bg-alt/85 backdrop-blur-md border-b border-app-border">
         <div className="max-w-3xl mx-auto px-6 h-14 flex items-center gap-4">
           {/* Exit */}
           {exitTo && (
@@ -49,10 +49,10 @@ export function ReviewShell({ children, exitTo, progress }: ReviewShellProps) {
                   <span className="text-app-flag">{progress.flagged} ⚑</span>
                 </div>
               </div>
-              <div className="w-full h-1.5 bg-app-surface rounded-full overflow-hidden">
+              <div className="w-full h-1.5 bg-app-border/45 rounded-full overflow-hidden">
                 {/* Segmented progress */}
                 <div
-                  className="h-full bg-app-nav/40 transition-all duration-300"
+                  className="h-full bg-app-nav transition-all duration-300"
                   style={{ width: `${pct}%` }}
                 />
               </div>

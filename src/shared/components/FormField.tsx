@@ -39,12 +39,12 @@ export const Input = forwardRef<HTMLInputElement, InputProps>(
       ref={ref}
       className={clsx(
         'w-full px-3 py-2 rounded-lg text-sm text-app-primary',
-        'bg-app-bg border transition-colors',
+        'bg-app-bg-alt border transition-colors',
         'focus:outline-none focus:ring-2 focus:ring-app-nav focus:border-transparent',
         'placeholder:text-app-secondary/50',
         error
           ? 'border-app-incorrect'
-          : 'border-app-border hover:border-app-secondary',
+          : 'border-app-border hover:border-app-nav/55',
         className,
       )}
       {...props}
@@ -63,12 +63,12 @@ export const Textarea = forwardRef<HTMLTextAreaElement, TextareaProps>(
       ref={ref}
       className={clsx(
         'w-full px-3 py-2 rounded-lg text-sm text-app-primary',
-        'bg-app-bg border transition-colors resize-y min-h-[80px]',
+        'bg-app-bg-alt border transition-colors resize-y min-h-[80px]',
         'focus:outline-none focus:ring-2 focus:ring-app-nav focus:border-transparent',
         'placeholder:text-app-secondary/50',
         error
           ? 'border-app-incorrect'
-          : 'border-app-border hover:border-app-secondary',
+          : 'border-app-border hover:border-app-nav/55',
         className,
       )}
       {...props}
@@ -88,11 +88,11 @@ export const Select = forwardRef<HTMLSelectElement, SelectProps>(
       ref={ref}
       className={clsx(
         'w-full px-3 py-2 rounded-lg text-sm text-app-primary',
-        'bg-app-bg border transition-colors',
+        'bg-app-bg-alt border transition-colors',
         'focus:outline-none focus:ring-2 focus:ring-app-nav focus:border-transparent',
         error
           ? 'border-app-incorrect'
-          : 'border-app-border hover:border-app-secondary',
+          : 'border-app-border hover:border-app-nav/55',
         className,
       )}
       {...props}

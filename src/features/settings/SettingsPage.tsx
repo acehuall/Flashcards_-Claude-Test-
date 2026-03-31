@@ -42,7 +42,7 @@ function SettingRow({ checked, onChange, disabled, label, description, badge }: 
       >
         <span
           className={clsx(
-            'absolute top-0.5 left-0.5 w-5 h-5 bg-white rounded-full shadow transition-transform duration-200',
+            'absolute top-0.5 left-0.5 w-5 h-5 bg-app-primary rounded-full shadow transition-transform duration-200',
             checked && 'translate-x-5',
           )}
         />
@@ -69,7 +69,7 @@ function SelectRow({ label, description, value, options, onChange }: SelectRowPr
       <select
         value={value}
         onChange={(e) => onChange(parseInt(e.target.value, 10))}
-        className="bg-app-bg border border-app-border text-app-primary text-sm rounded-lg px-3 py-1.5 focus:outline-none focus:ring-2 focus:ring-app-nav"
+        className="bg-app-bg-alt border border-app-border text-app-primary text-sm rounded-lg px-3 py-1.5 focus:outline-none focus:ring-2 focus:ring-app-nav"
       >
         {options.map((o) => (
           <option key={o.value} value={o.value}>{o.label}</option>
