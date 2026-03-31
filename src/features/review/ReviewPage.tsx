@@ -100,7 +100,7 @@ function FlipCard({
       : 0;
 
   return (
-    <div className="review-card-settle w-full flex-1" style={{ minHeight: '260px', maxHeight: '460px' }}>
+    <div className="review-card-frame review-card-settle">
       <div
         className="review-card-gesture review-card-shell relative w-full h-full cursor-pointer select-none"
         style={{
@@ -161,37 +161,44 @@ function FlipCard({
         style={{
           transformStyle: 'preserve-3d',
           transform: isFlipped ? 'rotateY(180deg)' : 'rotateY(0deg)',
-          minHeight: '260px',
         }}
       >
         <div
-          className="review-card-face review-card-face--question absolute inset-0 rounded-card bg-app-card-q flex flex-col items-center justify-center p-8"
+          className="review-card-face review-card-face--question absolute inset-0 rounded-card bg-app-card-q p-8"
           style={{ backfaceVisibility: 'hidden', WebkitBackfaceVisibility: 'hidden' }}
         >
-          <div className="review-card-scrollable max-h-full overflow-y-auto" data-review-card-scroll="true">
-            <p className="text-xl font-medium text-app-primary text-center leading-relaxed">
-              {question}
-            </p>
+          <div className="flex h-full flex-col">
+            <div className="review-card-scrollable flex-1 min-h-0 overflow-y-auto" data-review-card-scroll="true">
+              <div className="flex min-h-full flex-col justify-center">
+                <p className="text-xl font-medium text-app-primary text-center leading-relaxed">
+                  {question}
+                </p>
+              </div>
+            </div>
+            <div className="pt-4 text-center">
+              {!isFlipped && (
+                <p className="text-xs text-app-secondary">
+                  Tap or press Space to reveal answer
+                </p>
+              )}
+            </div>
           </div>
-          {!isFlipped && (
-            <p className="absolute bottom-4 text-xs text-app-secondary">
-              Tap or press Space to reveal answer
-            </p>
-          )}
         </div>
 
         <div
-          className="review-card-face review-card-face--answer absolute inset-0 rounded-card bg-app-card-a flex flex-col items-center justify-center p-8"
+          className="review-card-face review-card-face--answer absolute inset-0 rounded-card bg-app-card-a p-8"
           style={{
             backfaceVisibility: 'hidden',
             WebkitBackfaceVisibility: 'hidden',
             transform: 'rotateY(180deg)',
           }}
         >
-          <div className="review-card-scrollable max-h-full overflow-y-auto" data-review-card-scroll="true">
-            <p className="text-xl font-medium text-app-primary text-center leading-relaxed">
-              {answer}
-            </p>
+          <div className="review-card-scrollable h-full overflow-y-auto" data-review-card-scroll="true">
+            <div className="flex min-h-full flex-col justify-center">
+              <p className="text-xl font-medium text-app-primary text-center leading-relaxed">
+                {answer}
+              </p>
+            </div>
           </div>
         </div>
       </div>
@@ -702,29 +709,31 @@ export function ReviewPage({ mode = 'full', seedCardIds }: { mode?: SessionMode;
             />
 
             {/* Card */}
-            <FlipCard
-            key={currentCard.id}
-              question={currentCard.question}
-              answer={currentCard.answer}
-              isFlipped={state.isFlipped}
-              onFlip={() => dispatch({ type: 'FLIP' })}
-              animationEnabled={settings.flipAnimation}
-              onPointerDown={swipeHandlers.handlePointerDown}
-              onPointerMove={swipeHandlers.handlePointerMove}
-              onPointerUp={swipeHandlers.handlePointerUp}
-              onPointerCancel={swipeHandlers.handlePointerCancel}
-              onTouchStart={swipeHandlers.handleTouchStart}
-              onTouchMove={swipeHandlers.handleTouchMove}
-              onTouchEnd={swipeHandlers.handleTouchEnd}
-              onTouchCancel={swipeHandlers.handleTouchCancel}
-              onClick={swipeHandlers.handleClick}
-              swipeOffset={swipeHandlers.dragOffset}
-              swipeActive={swipeHandlers.isDragging}
-              swipeAnimating={swipeHandlers.isAnimating}
-              swipeDirection={swipeHandlers.swipeAxis}
-              swipeEnabled={settings.swipeGestures}
-              canSwipe={Boolean(state.isFlipped && currentCard && !currentCardAnswered)}
-            />
+            <div className="flex w-full justify-center">
+              <FlipCard
+                key={currentCard.id}
+                question={currentCard.question}
+                answer={currentCard.answer}
+                isFlipped={state.isFlipped}
+                onFlip={() => dispatch({ type: 'FLIP' })}
+                animationEnabled={settings.flipAnimation}
+                onPointerDown={swipeHandlers.handlePointerDown}
+                onPointerMove={swipeHandlers.handlePointerMove}
+                onPointerUp={swipeHandlers.handlePointerUp}
+                onPointerCancel={swipeHandlers.handlePointerCancel}
+                onTouchStart={swipeHandlers.handleTouchStart}
+                onTouchMove={swipeHandlers.handleTouchMove}
+                onTouchEnd={swipeHandlers.handleTouchEnd}
+                onTouchCancel={swipeHandlers.handleTouchCancel}
+                onClick={swipeHandlers.handleClick}
+                swipeOffset={swipeHandlers.dragOffset}
+                swipeActive={swipeHandlers.isDragging}
+                swipeAnimating={swipeHandlers.isAnimating}
+                swipeDirection={swipeHandlers.swipeAxis}
+                swipeEnabled={settings.swipeGestures}
+                canSwipe={Boolean(state.isFlipped && currentCard && !currentCardAnswered)}
+              />
+            </div>
 
             {/* Actions */}
             <div className="flex items-center justify-center gap-4 pb-4">
