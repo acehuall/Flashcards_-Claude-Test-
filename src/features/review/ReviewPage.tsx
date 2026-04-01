@@ -94,9 +94,9 @@ function FlipCard({
   canSwipe
 }: FlipCardProps) {
   const swipeFeedbackOpacity = swipeDirection === 'horizontal'
-    ? Math.min(Math.abs(swipeOffset.x) / 72, 1)
+    ? Math.min(Math.abs(swipeOffset.x) / 56, 1)
     : swipeOffset.y < 0
-      ? Math.min(Math.abs(swipeOffset.y) / 64, 1)
+      ? Math.min(Math.abs(swipeOffset.y) / 52, 1)
       : 0;
 
   return (
@@ -128,16 +128,16 @@ function FlipCard({
         role="button"
         aria-label={isFlipped ? 'Card showing answer. Press Enter to flip back.' : 'Card showing question. Press Enter to reveal answer.'}
       >
-      {canSwipe && swipeDirection && isFlipped && (
-        <div className="pointer-events-none absolute inset-0 z-10 overflow-hidden rounded-card">
+      {canSwipe && swipeDirection && (
+        <div className="pointer-events-none absolute inset-0 z-30 overflow-hidden rounded-card">
           <div
             className={clsx(
               'absolute inset-0 transition-opacity duration-150',
               swipeDirection === 'horizontal'
                 ? swipeOffset.x >= 0
-                  ? 'bg-app-correct/12'
-                  : 'bg-app-incorrect/12'
-                : 'bg-app-flag/12',
+                  ? 'bg-app-correct/30'
+                  : 'bg-app-incorrect/30'
+                : 'bg-app-flag/28',
             )}
             style={{ opacity: swipeFeedbackOpacity }}
           />
@@ -155,7 +155,7 @@ function FlipCard({
 
       <div
         className={clsx(
-          'review-card-flipper',
+          'review-card-flipper relative z-10',
           animationEnabled && 'transition-transform duration-300 ease-in-out',
         )}
         style={{
