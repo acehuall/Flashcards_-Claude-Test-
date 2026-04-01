@@ -354,7 +354,7 @@ function Filmstrip({ cards, activeIndex, outcomes, onSelect }: FilmstripProps) {
       </div>
 
       <div className="relative h-20 overflow-hidden rounded-full bg-app-surface border border-app-border" aria-label="Card scrubber">
-        <div className="pointer-events-none absolute inset-y-3 left-1/2 w-px -translate-x-1/2 bg-app-nav/20" />
+
 
         <div
           ref={viewportRef}
