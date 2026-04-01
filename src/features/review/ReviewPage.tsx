@@ -155,17 +155,15 @@ function FlipCard({
 
       <div
         className={clsx(
-          'relative w-full h-full',
+          'review-card-flipper',
           animationEnabled && 'transition-transform duration-300 ease-in-out',
         )}
         style={{
-          transformStyle: 'preserve-3d',
           transform: isFlipped ? 'rotateY(180deg)' : 'rotateY(0deg)',
         }}
       >
         <div
-          className="review-card-face review-card-face--question absolute inset-0 rounded-card bg-app-card-q p-8"
-          style={{ backfaceVisibility: 'hidden', WebkitBackfaceVisibility: 'hidden' }}
+          className="review-card-face review-card-face--question rounded-card bg-app-card-q p-8"
         >
           <div className="review-card-face-content">
             <div className="review-card-scrollable review-card-scroll-region" data-review-card-scroll="true">
@@ -186,12 +184,7 @@ function FlipCard({
         </div>
 
         <div
-          className="review-card-face review-card-face--answer absolute inset-0 rounded-card bg-app-card-a p-8"
-          style={{
-            backfaceVisibility: 'hidden',
-            WebkitBackfaceVisibility: 'hidden',
-            transform: 'rotateY(180deg)',
-          }}
+          className="review-card-face review-card-face--answer review-card-face--back rounded-card bg-app-card-a p-8"
         >
           <div className="review-card-face-content">
             <div className="review-card-scrollable review-card-scroll-region" data-review-card-scroll="true">
