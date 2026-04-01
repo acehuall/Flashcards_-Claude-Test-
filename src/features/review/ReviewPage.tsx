@@ -201,6 +201,9 @@ function FlipCard({
                 </p>
               </div>
             </div>
+            <div className="review-card-hint pointer-events-none" aria-hidden="true">
+              <p className="invisible text-xs">Tap or press Space to reveal answer</p>
+            </div>
           </div>
         </div>
       </div>
