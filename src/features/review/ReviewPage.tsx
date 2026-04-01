@@ -220,12 +220,14 @@ function Filmstrip({ cards, activeIndex, outcomes, onSelect }: FilmstripProps) {
   const viewportRef = useRef<HTMLDivElement | null>(null);
   const barRefs = useRef<Array<HTMLButtonElement | null>>([]);
   const activeIndexRef = useRef(activeIndex);
+  const [edgeSpacerWidth, setEdgeSpacerWidth] = useState(0);
   const rafRef = useRef<number | null>(null);
   const isProgrammaticScrollRef = useRef(false);
   const scrollTargetLeftRef = useRef<number | null>(null);
   const programmaticResetTimeoutRef = useRef<number | null>(null);
   const skipNextCenteringRef = useRef(false);
   const hasInitialCenteringRef = useRef(false);
+  const hasMeasuredSpacerRef = useRef(false);
 
   useEffect(() => {
     activeIndexRef.current = activeIndex;
@@ -293,6 +295,12 @@ function Filmstrip({ cards, activeIndex, outcomes, onSelect }: FilmstripProps) {
   }, []);
 
   useEffect(() => {
+    barRefs.current.length = cards.length;
+  }, [cards.length]);
+
+  useEffect(() => {
+    if (!hasMeasuredSpacerRef.current) return;
+
     if (!hasInitialCenteringRef.current) {
       hasInitialCenteringRef.current = true;
       centerIndex(activeIndex, 'auto');
@@ -305,7 +313,7 @@ function Filmstrip({ cards, activeIndex, outcomes, onSelect }: FilmstripProps) {
     }
 
     centerIndex(activeIndex, 'smooth');
-  }, [activeIndex, cards.length, centerIndex]);
+  }, [activeIndex, cards.length, centerIndex, edgeSpacerWidth]);
 
   useEffect(() => () => {
     if (rafRef.current !== null) {
@@ -314,6 +322,28 @@ function Filmstrip({ cards, activeIndex, outcomes, onSelect }: FilmstripProps) {
     if (programmaticResetTimeoutRef.current !== null) {
       window.clearTimeout(programmaticResetTimeoutRef.current);
     }
+  }, []);
+
+  useEffect(() => {
+    const viewport = viewportRef.current;
+    if (!viewport) return;
+
+    const updateEdgeSpacer = () => {
+      const nextWidth = Math.max(0, (viewport.clientWidth / 2) - (SCRUBBER_BAR_WIDTH / 2));
+      hasMeasuredSpacerRef.current = true;
+      setEdgeSpacerWidth((prev) => (Math.abs(prev - nextWidth) < 0.5 ? prev : nextWidth));
+    };
+
+    updateEdgeSpacer();
+
+    if (typeof ResizeObserver === 'undefined') {
+      window.addEventListener('resize', updateEdgeSpacer);
+      return () => window.removeEventListener('resize', updateEdgeSpacer);
+    }
+
+    const resizeObserver = new ResizeObserver(updateEdgeSpacer);
+    resizeObserver.observe(viewport);
+    return () => resizeObserver.disconnect();
   }, []);
 
   return (
@@ -359,10 +389,8 @@ function Filmstrip({ cards, activeIndex, outcomes, onSelect }: FilmstripProps) {
             msOverflowStyle: 'none',
           }}
         >
-          <div
-            className="flex h-full items-center"
-            style={{ paddingLeft: `calc(50% - ${SCRUBBER_BAR_WIDTH / 2}px)`, paddingRight: `calc(50% - ${SCRUBBER_BAR_WIDTH / 2}px)` }}
-          >
+          <div className="inline-flex h-full items-center min-w-max">
+            <div aria-hidden="true" className="shrink-0" style={{ width: `${edgeSpacerWidth}px` }} />
             {cards.map((card, index) => {
               const distanceFromCenter = Math.abs(index - activeIndex);
               const proximity = Math.max(0, 1 - (distanceFromCenter / 6));
@@ -402,6 +430,7 @@ function Filmstrip({ cards, activeIndex, outcomes, onSelect }: FilmstripProps) {
                 </button>
               );
             })}
+            <div aria-hidden="true" className="shrink-0" style={{ width: `${edgeSpacerWidth}px` }} />
           </div>
         </div>
       </div>
