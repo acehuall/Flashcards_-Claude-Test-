@@ -714,31 +714,29 @@ export function ReviewPage({ mode = 'full', seedCardIds }: { mode?: SessionMode;
             />
 
             {/* Card */}
-            <div className="flex w-full justify-center">
-              <FlipCard
-                key={currentCard.id}
-                question={currentCard.question}
-                answer={currentCard.answer}
-                isFlipped={state.isFlipped}
-                onFlip={() => dispatch({ type: 'FLIP' })}
-                animationEnabled={settings.flipAnimation}
-                onPointerDown={swipeHandlers.handlePointerDown}
-                onPointerMove={swipeHandlers.handlePointerMove}
-                onPointerUp={swipeHandlers.handlePointerUp}
-                onPointerCancel={swipeHandlers.handlePointerCancel}
-                onTouchStart={swipeHandlers.handleTouchStart}
-                onTouchMove={swipeHandlers.handleTouchMove}
-                onTouchEnd={swipeHandlers.handleTouchEnd}
-                onTouchCancel={swipeHandlers.handleTouchCancel}
-                onClick={swipeHandlers.handleClick}
-                swipeOffset={swipeHandlers.dragOffset}
-                swipeActive={swipeHandlers.isDragging}
-                swipeAnimating={swipeHandlers.isAnimating}
-                swipeDirection={swipeHandlers.swipeAxis}
-                swipeEnabled={settings.swipeGestures}
-                canSwipe={Boolean(state.isFlipped && currentCard && !currentCardAnswered)}
-              />
-            </div>
+            <FlipCard
+              key={currentCard.id}
+              question={currentCard.question}
+              answer={currentCard.answer}
+              isFlipped={state.isFlipped}
+              onFlip={() => dispatch({ type: 'FLIP' })}
+              animationEnabled={settings.flipAnimation}
+              onPointerDown={swipeHandlers.handlePointerDown}
+              onPointerMove={swipeHandlers.handlePointerMove}
+              onPointerUp={swipeHandlers.handlePointerUp}
+              onPointerCancel={swipeHandlers.handlePointerCancel}
+              onTouchStart={swipeHandlers.handleTouchStart}
+              onTouchMove={swipeHandlers.handleTouchMove}
+              onTouchEnd={swipeHandlers.handleTouchEnd}
+              onTouchCancel={swipeHandlers.handleTouchCancel}
+              onClick={swipeHandlers.handleClick}
+              swipeOffset={swipeHandlers.dragOffset}
+              swipeActive={swipeHandlers.isDragging}
+              swipeAnimating={swipeHandlers.isAnimating}
+              swipeDirection={swipeHandlers.swipeAxis}
+              swipeEnabled={settings.swipeGestures}
+              canSwipe={Boolean(state.isFlipped && currentCard && !currentCardAnswered)}
+            />
 
             {/* Actions */}
             <div className="flex items-center justify-center gap-4 pb-4">
