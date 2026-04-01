@@ -108,18 +108,13 @@
     transform-style: preserve-3d;
   }
 
-  .review-card-face {
-    position: absolute;
-    inset: 0;
-    overflow: hidden;
-    border: 1px solid rgb(255 255 255 / 0.17);
-    box-shadow:
-      0 1px 0 rgb(255 255 255 / 0.07) inset,
-      0 18px 40px -20px rgb(0 0 0 / 0.72),
-      0 10px 20px -10px rgb(0 0 0 / 0.5);
-    backface-visibility: hidden;
-    -webkit-backface-visibility: hidden;
-  }
+.review-card-face {
+  box-shadow:
+    0 1px 0 rgb(255 255 255 / 0.05) inset,
+    0 12px 28px -16px rgb(0 0 0 / 0.32),
+    0 4px 10px -6px rgb(0 0 0 / 0.18),
+    0 0 0 1px rgb(255 255 255 / 0.04);
+}
 
   .review-card-face--back {
     transform: rotateY(180deg);
