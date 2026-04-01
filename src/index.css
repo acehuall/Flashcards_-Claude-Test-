@@ -109,11 +109,17 @@
   }
 
 .review-card-face {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  border: 1px solid rgb(255 255 255 / 0.17);
   box-shadow:
     0 1px 0 rgb(255 255 255 / 0.05) inset,
     0 12px 28px -16px rgb(0 0 0 / 0.32),
     0 4px 10px -6px rgb(0 0 0 / 0.18),
     0 0 0 1px rgb(255 255 255 / 0.04);
+  backface-visibility: hidden;
+  -webkit-backface-visibility: hidden;
 }
 
   .review-card-face--back {
