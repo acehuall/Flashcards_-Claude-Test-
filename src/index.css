@@ -111,7 +111,6 @@
 .review-card-face {
   position: absolute;
   inset: 0;
-  overflow: hidden;
   border: 1px solid rgb(255 255 255 / 0.17);
   box-shadow:
     0 1px 0 rgb(255 255 255 / 0.05) inset,
@@ -129,6 +128,8 @@
   .review-card-face-content {
     position: relative;
     height: 100%;
+    overflow: hidden;
+    border-radius: 16px;
   }
 
   .review-card-scroll-region {
