@@ -104,7 +104,7 @@ function FlipCard({
     : swipeDirection === 'vertical'
       ? 'flagged'
       : null;
-  const overlayTint = swipeTint ?? buttonFeedback;
+  const overlayTint = buttonFeedback ?? swipeTint;
   const swipeFeedbackOpacity = swipeDirection === 'horizontal'
     ? Math.min(Math.abs(swipeOffset.x) / 56, 1)
     : swipeOffset.y < 0
