@@ -69,6 +69,8 @@ interface FlipCardProps {
   swipeDirection: 'horizontal' | 'vertical' | null;
   swipeEnabled: boolean;
   canSwipe: boolean;
+  buttonFeedback: 'correct' | 'incorrect' | 'flagged' | null;
+  interactionLocked: boolean;
 }
 
 function FlipCard({
@@ -91,13 +93,24 @@ function FlipCard({
   swipeAnimating,
   swipeDirection,
   swipeEnabled,
-  canSwipe
+  canSwipe,
+  buttonFeedback,
+  interactionLocked,
 }: FlipCardProps) {
+  const swipeTint = swipeDirection === 'horizontal'
+    ? swipeOffset.x >= 0
+      ? 'correct'
+      : 'incorrect'
+    : swipeDirection === 'vertical'
+      ? 'flagged'
+      : null;
+  const overlayTint = swipeTint ?? buttonFeedback;
   const swipeFeedbackOpacity = swipeDirection === 'horizontal'
     ? Math.min(Math.abs(swipeOffset.x) / 56, 1)
     : swipeOffset.y < 0
       ? Math.min(Math.abs(swipeOffset.y) / 52, 1)
       : 0;
+  const overlayOpacity = swipeTint ? swipeFeedbackOpacity : buttonFeedback ? 1 : 0;
 
   return (
     <div className="review-card-frame review-card-settle">
@@ -119,6 +132,7 @@ function FlipCard({
         onTouchEnd={onTouchEnd}
         onTouchCancel={onTouchCancel}
         onKeyDown={(e) => {
+          if (interactionLocked) return;
           if (e.key === ' ' || e.key === 'Enter') {
             e.preventDefault();
             onFlip();
@@ -128,27 +142,27 @@ function FlipCard({
         role="button"
         aria-label={isFlipped ? 'Card showing answer. Press Enter to flip back.' : 'Card showing question. Press Enter to reveal answer.'}
       >
-      {canSwipe && swipeDirection && (
+      {overlayTint && (
         <div className="pointer-events-none absolute inset-0 z-30 overflow-hidden rounded-card">
           <div
             className={clsx(
               'absolute inset-0 transition-opacity duration-150',
-              swipeDirection === 'horizontal'
-                ? swipeOffset.x >= 0
-                  ? 'bg-app-correct/30'
-                  : 'bg-app-incorrect/30'
-                : 'bg-app-flag/28',
+              overlayTint === 'correct'
+                ? 'bg-app-correct/30'
+                : overlayTint === 'incorrect'
+                  ? 'bg-app-incorrect/30'
+                  : 'bg-app-flag/28',
             )}
-            style={{ opacity: swipeFeedbackOpacity }}
+            style={{ opacity: overlayOpacity }}
           />
 
           <div className="pointer-events-none absolute inset-x-4 top-4 flex items-center justify-between text-[11px] font-semibold uppercase tracking-[0.24em] text-app-secondary/80">
-            <span className={clsx('transition-opacity duration-150', swipeOffset.x > 12 ? 'opacity-100' : 'opacity-0')}>Correct</span>
-            <span className={clsx('transition-opacity duration-150', swipeOffset.x < -12 ? 'opacity-100' : 'opacity-0')}>Incorrect</span>
+            <span className={clsx('transition-opacity duration-150', overlayTint === 'correct' ? 'opacity-100' : 'opacity-0')}>Correct</span>
+            <span className={clsx('transition-opacity duration-150', overlayTint === 'incorrect' ? 'opacity-100' : 'opacity-0')}>Incorrect</span>
           </div>
 
           <div className="pointer-events-none absolute inset-x-0 top-4 flex justify-center text-[11px] font-semibold uppercase tracking-[0.24em] text-app-secondary/80">
-            <span className={clsx('transition-opacity duration-150', swipeOffset.y < -12 ? 'opacity-100' : 'opacity-0')}>Flag</span>
+            <span className={clsx('transition-opacity duration-150', overlayTint === 'flagged' ? 'opacity-100' : 'opacity-0')}>Flag</span>
           </div>
         </div>
       )}
@@ -210,13 +224,14 @@ interface FilmstripProps {
   activeIndex: number;
   outcomes: Record<number, Outcome>;
   onSelect: (index: number) => void;
+  disabled?: boolean;
 }
 
 const SCRUBBER_BAR_WIDTH = 12;
 const SCRUBBER_BAR_HEIGHT = 52;
 const SCRUBBER_BAR_GAP = 10;
 
-function Filmstrip({ cards, activeIndex, outcomes, onSelect }: FilmstripProps) {
+function Filmstrip({ cards, activeIndex, outcomes, onSelect, disabled = false }: FilmstripProps) {
   const viewportRef = useRef<HTMLDivElement | null>(null);
   const barRefs = useRef<Array<HTMLButtonElement | null>>([]);
   const activeIndexRef = useRef(activeIndex);
@@ -347,7 +362,7 @@ function Filmstrip({ cards, activeIndex, outcomes, onSelect }: FilmstripProps) {
   }, []);
 
   return (
-    <div className="flex flex-col gap-2">
+    <div className={clsx('flex flex-col gap-2', disabled && 'pointer-events-none')}>
       <div className="flex items-center justify-between px-1 text-[11px] uppercase tracking-[0.22em] text-app-secondary/60">
         <span>Scrub</span>
         <span>{activeIndex + 1} / {cards.length}</span>
@@ -414,6 +429,7 @@ function Filmstrip({ cards, activeIndex, outcomes, onSelect }: FilmstripProps) {
                   ref={(node) => { barRefs.current[index] = node; }}
                   type="button"
                   onClick={() => onSelect(index)}
+                  disabled={disabled}
                   className="relative shrink-0 rounded-full transition-[opacity,transform,background-color] duration-150 ease-out focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-app-nav/50"
                   style={{
                     width: `${SCRUBBER_BAR_WIDTH}px`,
@@ -449,6 +465,8 @@ export function ReviewPage({ mode = 'full', seedCardIds }: { mode?: SessionMode;
 
   const [pageStatus, setPageStatus] = useState<PageStatus>('loading');
   const [pendingSnapshot, setPendingSnapshot] = useState<ActiveSessionSnapshot | null>(null);
+  const [buttonFeedback, setButtonFeedback] = useState<'correct' | 'incorrect' | 'flagged' | null>(null);
+  const buttonFeedbackTimeoutRef = useRef<number | null>(null);
 
   const [state, dispatch] = useReducer(reviewReducer, {
     queue: [],
@@ -629,20 +647,60 @@ export function ReviewPage({ mode = 'full', seedCardIds }: { mode?: SessionMode;
     return () => clearTimeout(timer);
   }, [pageStatus, state.currentIndex, state.isFlipped, settings.autoShowAnswer]);
 
-  const navigateToCard = useCallback((index: number) => {
-    dispatch({ type: 'NAVIGATE_TO', payload: index });
-  }, []);
-
   const currentCard = state.queue[state.currentIndex];
   const currentCardAnswered = currentCard ? Boolean(state.outcomes[currentCard.id]) : false;
+  const interactionLocked = buttonFeedback !== null;
+
+  const navigateToCard = useCallback((index: number) => {
+    if (interactionLocked) return;
+    dispatch({ type: 'NAVIGATE_TO', payload: index });
+  }, [interactionLocked]);
+
+  const clearButtonFeedbackTimer = useCallback(() => {
+    if (buttonFeedbackTimeoutRef.current !== null) {
+      window.clearTimeout(buttonFeedbackTimeoutRef.current);
+      buttonFeedbackTimeoutRef.current = null;
+    }
+  }, []);
+
+  const resolveOutcomeWithFeedback = useCallback((outcome: 'correct' | 'incorrect' | 'flagged') => {
+    if (interactionLocked || !state.isFlipped || !currentCard || currentCardAnswered) return;
+
+    setButtonFeedback(outcome);
+    clearButtonFeedbackTimer();
+
+    buttonFeedbackTimeoutRef.current = window.setTimeout(() => {
+      dispatch({
+        type: outcome === 'correct'
+          ? 'MARK_CORRECT'
+          : outcome === 'incorrect'
+            ? 'MARK_INCORRECT'
+            : 'MARK_FLAGGED',
+      });
+      setButtonFeedback(null);
+      buttonFeedbackTimeoutRef.current = null;
+    }, 170);
+  }, [clearButtonFeedbackTimer, currentCard, currentCardAnswered, interactionLocked, state.isFlipped]);
 
   const swipeHandlers = useReviewSwipe({
-    enabled: settings.swipeGestures,
-    canSwipe: Boolean(state.isFlipped && currentCard && !currentCardAnswered),
-    onTap: () => dispatch({ type: 'FLIP' }),
-    onSwipeLeft: () => dispatch({ type: 'MARK_INCORRECT' }),
-    onSwipeRight: () => dispatch({ type: 'MARK_CORRECT' }),
-    onSwipeUp: () => dispatch({ type: 'MARK_FLAGGED' }),
+    enabled: settings.swipeGestures && !interactionLocked,
+    canSwipe: Boolean(state.isFlipped && currentCard && !currentCardAnswered && !interactionLocked),
+    onTap: () => {
+      if (interactionLocked) return;
+      dispatch({ type: 'FLIP' });
+    },
+    onSwipeLeft: () => {
+      if (interactionLocked) return;
+      dispatch({ type: 'MARK_INCORRECT' });
+    },
+    onSwipeRight: () => {
+      if (interactionLocked) return;
+      dispatch({ type: 'MARK_CORRECT' });
+    },
+    onSwipeUp: () => {
+      if (interactionLocked) return;
+      dispatch({ type: 'MARK_FLAGGED' });
+    },
   });
 
   const resetSwipeGesture = swipeHandlers.reset;
@@ -651,6 +709,12 @@ export function ReviewPage({ mode = 'full', seedCardIds }: { mode?: SessionMode;
     resetSwipeGesture();
   }, [resetSwipeGesture, state.currentIndex, state.isFlipped]);
 
+  useEffect(() => {
+    return () => {
+      clearButtonFeedbackTimer();
+    };
+  }, [clearButtonFeedbackTimer]);
+
   // ─── Keyboard shortcuts ──────────────────────────────────────────────────────
 
   useEffect(() => {
@@ -658,6 +722,7 @@ export function ReviewPage({ mode = 'full', seedCardIds }: { mode?: SessionMode;
     const handler = (e: KeyboardEvent) => {
       // Don't intercept if user is in an input
       if ((e.target as HTMLElement)?.tagName === 'INPUT') return;
+      if (interactionLocked) return;
       switch (e.key) {
         case ' ':
           e.preventDefault();
@@ -670,19 +735,19 @@ export function ReviewPage({ mode = 'full', seedCardIds }: { mode?: SessionMode;
           dispatch({ type: 'NAVIGATE_NEXT' });
           break;
         case '1':
-          if (state.isFlipped) dispatch({ type: 'MARK_INCORRECT' });
+          resolveOutcomeWithFeedback('incorrect');
           break;
         case '2':
-          if (state.isFlipped) dispatch({ type: 'MARK_FLAGGED' });
+          resolveOutcomeWithFeedback('flagged');
           break;
         case '3':
-          if (state.isFlipped) dispatch({ type: 'MARK_CORRECT' });
+          resolveOutcomeWithFeedback('correct');
           break;
       }
     };
     window.addEventListener('keydown', handler);
     return () => window.removeEventListener('keydown', handler);
-  }, [pageStatus, state.isFlipped]);
+  }, [interactionLocked, pageStatus, resolveOutcomeWithFeedback]);
 
   // ─── Render ──────────────────────────────────────────────────────────────────
 
@@ -733,6 +798,7 @@ export function ReviewPage({ mode = 'full', seedCardIds }: { mode?: SessionMode;
               activeIndex={state.currentIndex}
               outcomes={state.outcomes}
               onSelect={navigateToCard}
+              disabled={interactionLocked}
             />
 
             {/* Card */}
@@ -742,7 +808,10 @@ export function ReviewPage({ mode = 'full', seedCardIds }: { mode?: SessionMode;
                 question={currentCard.question}
                 answer={currentCard.answer}
                 isFlipped={state.isFlipped}
-                onFlip={() => dispatch({ type: 'FLIP' })}
+                onFlip={() => {
+                  if (interactionLocked) return;
+                  dispatch({ type: 'FLIP' });
+                }}
                 animationEnabled={settings.flipAnimation}
                 onPointerDown={swipeHandlers.handlePointerDown}
                 onPointerMove={swipeHandlers.handlePointerMove}
@@ -752,13 +821,18 @@ export function ReviewPage({ mode = 'full', seedCardIds }: { mode?: SessionMode;
                 onTouchMove={swipeHandlers.handleTouchMove}
                 onTouchEnd={swipeHandlers.handleTouchEnd}
                 onTouchCancel={swipeHandlers.handleTouchCancel}
-                onClick={swipeHandlers.handleClick}
+                onClick={(event) => {
+                  if (interactionLocked) return;
+                  swipeHandlers.handleClick(event);
+                }}
                 swipeOffset={swipeHandlers.dragOffset}
                 swipeActive={swipeHandlers.isDragging}
                 swipeAnimating={swipeHandlers.isAnimating}
                 swipeDirection={swipeHandlers.swipeAxis}
                 swipeEnabled={settings.swipeGestures}
-                canSwipe={Boolean(state.isFlipped && currentCard && !currentCardAnswered)}
+                canSwipe={Boolean(state.isFlipped && currentCard && !currentCardAnswered && !interactionLocked)}
+                buttonFeedback={buttonFeedback}
+                interactionLocked={interactionLocked}
               />
             </div>
 
@@ -767,7 +841,7 @@ export function ReviewPage({ mode = 'full', seedCardIds }: { mode?: SessionMode;
               {/* Back arrow */}
               <button
                 onClick={() => dispatch({ type: 'NAVIGATE_PREV' })}
-                disabled={state.currentIndex === 0}
+                disabled={interactionLocked || state.currentIndex === 0}
                 className="w-11 h-11 rounded-full bg-app-surface border border-app-border flex items-center justify-center text-app-secondary hover:text-app-primary hover:border-app-secondary disabled:opacity-30 disabled:cursor-not-allowed transition-all"
                 aria-label="Previous card"
               >
@@ -784,7 +858,8 @@ export function ReviewPage({ mode = 'full', seedCardIds }: { mode?: SessionMode;
                 )}
               >
                 <button
-                  onClick={() => dispatch({ type: 'MARK_INCORRECT' })}
+                  onClick={() => resolveOutcomeWithFeedback('incorrect')}
+                  disabled={Boolean(buttonFeedback)}
                   className="flex flex-col items-center gap-1 group"
                   aria-label="Mark incorrect (key: 1)"
                 >
@@ -797,7 +872,8 @@ export function ReviewPage({ mode = 'full', seedCardIds }: { mode?: SessionMode;
                 </button>
 
                 <button
-                  onClick={() => dispatch({ type: 'MARK_FLAGGED' })}
+                  onClick={() => resolveOutcomeWithFeedback('flagged')}
+                  disabled={Boolean(buttonFeedback)}
                   className="flex flex-col items-center gap-1 group"
                   aria-label="Flag for review (key: 2)"
                 >
@@ -810,7 +886,8 @@ export function ReviewPage({ mode = 'full', seedCardIds }: { mode?: SessionMode;
                 </button>
 
                 <button
-                  onClick={() => dispatch({ type: 'MARK_CORRECT' })}
+                  onClick={() => resolveOutcomeWithFeedback('correct')}
+                  disabled={Boolean(buttonFeedback)}
                   className="flex flex-col items-center gap-1 group"
                   aria-label="Mark correct (key: 3)"
                 >
@@ -826,7 +903,7 @@ export function ReviewPage({ mode = 'full', seedCardIds }: { mode?: SessionMode;
               {/* Forward arrow */}
               <button
                 onClick={() => dispatch({ type: 'NAVIGATE_NEXT' })}
-                disabled={state.currentIndex >= state.queue.length - 1}
+                disabled={interactionLocked || state.currentIndex >= state.queue.length - 1}
                 className="w-11 h-11 rounded-full bg-app-surface border border-app-border flex items-center justify-center text-app-secondary hover:text-app-primary hover:border-app-secondary disabled:opacity-30 disabled:cursor-not-allowed transition-all"
                 aria-label="Next card"
               >
