@@ -136,7 +136,7 @@ export function SettingsPage() {
               checked={settings.swipeGestures}
               onChange={(v) => updateSettings({ swipeGestures: v })}
               label="Swipe gestures"
-              description="Swipe cards left/right/up to mark outcomes"
+              description="On answer cards: swipe left/right for incorrect/correct, swipe up to flag, or use the right scroll gutter to read long answers"
             />
           </div>
         </section>

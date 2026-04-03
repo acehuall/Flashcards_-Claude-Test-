@@ -13,6 +13,7 @@ const SETTLE_DURATION_MS = 180;
 type GestureIntent = 'idle' | 'horizontal' | 'vertical' | 'scroll';
 export type SwipeAxis = 'horizontal' | 'vertical';
 type InteractionInputType = 'mouse' | 'touch' | 'pen' | 'unknown';
+type TouchOwnership = 'browser' | 'js' | null;
 
 export interface ReviewSwipeState {
   offset: { x: number; y: number };
@@ -25,6 +26,7 @@ export interface ReviewSwipeState {
 interface UseReviewSwipeOptions {
   enabled: boolean;
   canSwipe: boolean;
+  gestureElement: HTMLDivElement | null;
   onTap: () => void;
   onSwipeLeft: () => void;
   onSwipeRight: () => void;
@@ -49,24 +51,57 @@ function findScrollableAncestor(target: EventTarget | null, boundary: HTMLElemen
   return null;
 }
 
-function canScrollInGestureDirection(element: HTMLElement | null, deltaY: number) {
+function canScrollInGestureDirection(element: HTMLElement | null, deltaY: number, tolerance = 1) {
   if (!element) return false;
-  if (element.scrollHeight <= element.clientHeight + 1) return false;
+  if (element.scrollHeight <= element.clientHeight + tolerance) return false;
 
   if (deltaY < 0) {
-    return element.scrollTop + element.clientHeight < element.scrollHeight - 1;
+    return element.scrollTop + element.clientHeight < element.scrollHeight - tolerance;
   }
 
   if (deltaY > 0) {
-    return element.scrollTop > 0;
+    return element.scrollTop > tolerance;
   }
 
   return false;
 }
 
+function findClosestWithinBoundary(target: EventTarget | null, boundary: HTMLElement | null, predicate: (node: HTMLElement) => boolean) {
+  if (!(target instanceof HTMLElement) || !boundary) return null;
+  let node: HTMLElement | null = target;
+  while (node && node !== boundary) {
+    if (predicate(node)) return node;
+    node = node.parentElement;
+  }
+  if (node === boundary && predicate(node)) return node;
+  return null;
+}
+
+function didGestureStartInScrollGutter(target: EventTarget | null, boundary: HTMLElement | null) {
+  return Boolean(findClosestWithinBoundary(target, boundary, (node) => node.dataset.reviewScrollGutter === 'true'));
+}
+
+function findActiveReviewFace(target: EventTarget | null, boundary: HTMLElement | null): 'question' | 'answer' | null {
+  const face = findClosestWithinBoundary(target, boundary, (node) => node.dataset.reviewFace === 'question' || node.dataset.reviewFace === 'answer');
+  if (!face) return null;
+  return face.dataset.reviewFace === 'answer' ? 'answer' : 'question';
+}
+
+function findFaceScrollContainer(target: EventTarget | null, boundary: HTMLElement | null) {
+  const face = findClosestWithinBoundary(target, boundary, (node) => node.dataset.reviewFace === 'question' || node.dataset.reviewFace === 'answer');
+  if (!face) return null;
+  return face.querySelector<HTMLElement>('[data-review-card-scroll="true"]');
+}
+
+function isScrollContainerAtTop(element: HTMLElement | null, tolerance = 1) {
+  if (!element) return true;
+  return element.scrollTop <= tolerance;
+}
+
 export function useReviewSwipe({
   enabled,
   canSwipe,
+  gestureElement,
   onTap,
   onSwipeLeft,
   onSwipeRight,
@@ -79,6 +114,8 @@ export function useReviewSwipe({
   const lastXRef = useRef(0);
   const lastYRef = useRef(0);
   const interactionInputRef = useRef<InteractionInputType>('unknown');
+  const touchOwnershipRef = useRef<TouchOwnership>(null);
+  const touchEligibleForVerticalActionRef = useRef(false);
   const intentRef = useRef<GestureIntent>('idle');
   const movedPastTapSlopRef = useRef(false);
   const startTargetRef = useRef<EventTarget | null>(null);
@@ -107,6 +144,8 @@ export function useReviewSwipe({
     touchIdRef.current = null;
     intentRef.current = 'idle';
     interactionInputRef.current = 'unknown';
+    touchOwnershipRef.current = null;
+    touchEligibleForVerticalActionRef.current = false;
     movedPastTapSlopRef.current = false;
     startTargetRef.current = null;
     containerWidthRef.current = 0;
@@ -137,6 +176,7 @@ export function useReviewSwipe({
     lastXRef.current = clientX;
     lastYRef.current = clientY;
     interactionInputRef.current = inputType;
+    touchOwnershipRef.current = inputType === 'touch' ? 'js' : null;
     intentRef.current = 'idle';
     movedPastTapSlopRef.current = false;
     startTargetRef.current = target;
@@ -185,11 +225,14 @@ export function useReviewSwipe({
       const scrollableAncestor = findScrollableAncestor(startTargetRef.current, currentTarget);
       const horizontalIntent = absX > absY * 1.15;
       const upwardIntent = deltaY < 0 && absY > absX * 1.15;
-      const allowVerticalSwipe = interactionInputRef.current !== 'touch';
 
       if (canSwipe && horizontalIntent) {
         intentRef.current = 'horizontal';
-      } else if (canSwipe && allowVerticalSwipe && upwardIntent && !canScrollInGestureDirection(scrollableAncestor, deltaY)) {
+      } else if (canSwipe && upwardIntent && !canScrollInGestureDirection(scrollableAncestor, deltaY)) {
+        if (interactionInputRef.current === 'touch' && !touchEligibleForVerticalActionRef.current) {
+          intentRef.current = 'scroll';
+          return;
+        }
         intentRef.current = 'vertical';
       } else {
         intentRef.current = 'scroll';
@@ -273,6 +316,8 @@ export function useReviewSwipe({
     startTargetRef.current = null;
     intentRef.current = 'idle';
     interactionInputRef.current = 'unknown';
+    touchOwnershipRef.current = null;
+    touchEligibleForVerticalActionRef.current = false;
 
     if (intent === 'horizontal' && canSwipe) {
       if (deltaX >= HORIZONTAL_SWIPE_THRESHOLD) {
@@ -318,6 +363,7 @@ export function useReviewSwipe({
 
   const handlePointerDown = useCallback((event: React.PointerEvent<HTMLElement>) => {
     if (!enabled || !event.isPrimary || isSwipeCommitRef.current) return;
+    if (event.pointerType === 'touch') return;
     if (event.pointerType === 'mouse' && event.button !== 0) return;
 
     pointerIdRef.current = event.pointerId;
@@ -327,7 +373,7 @@ export function useReviewSwipe({
       clientY: event.clientY,
       target: event.target,
       currentTarget: event.currentTarget,
-      inputType: event.pointerType === 'mouse' || event.pointerType === 'touch' || event.pointerType === 'pen'
+      inputType: event.pointerType === 'mouse' || event.pointerType === 'pen'
         ? event.pointerType
         : 'unknown',
     });
@@ -369,20 +415,9 @@ export function useReviewSwipe({
     cancelInteraction();
   }, [cancelInteraction]);
 
-  const handleTouchStart = useCallback((event: React.TouchEvent<HTMLElement>) => {
-    if (!enabled || isSwipeCommitRef.current || pointerIdRef.current !== null || touchIdRef.current !== null) return;
-    const touch = event.changedTouches[0];
-    if (!touch) return;
-
-    touchIdRef.current = touch.identifier;
-    beginInteraction({
-      clientX: touch.clientX,
-      clientY: touch.clientY,
-      target: event.target,
-      currentTarget: event.currentTarget,
-      inputType: 'touch',
-    });
-  }, [beginInteraction, enabled]);
+  const handleTouchStart = useCallback((_event: React.TouchEvent<HTMLElement>) => {
+    if (!enabled) return;
+  }, [enabled]);
 
   const handleTouchMove = useCallback((event: React.TouchEvent<HTMLElement>) => {
     if (touchIdRef.current === null) return;
@@ -395,7 +430,7 @@ export function useReviewSwipe({
       currentTarget: event.currentTarget,
     });
 
-    if (intentRef.current === 'horizontal') {
+    if (touchOwnershipRef.current === 'js' && (intentRef.current === 'horizontal' || intentRef.current === 'vertical')) {
       event.preventDefault();
     }
   }, [moveInteraction]);
@@ -416,6 +451,48 @@ export function useReviewSwipe({
     if (!touch) return;
     cancelInteraction();
   }, [cancelInteraction]);
+
+  useEffect(() => {
+    if (!gestureElement) return;
+
+    const handleNativeTouchStart = (event: TouchEvent) => {
+      if (!enabled || isSwipeCommitRef.current || pointerIdRef.current !== null || touchIdRef.current !== null) return;
+      const touch = event.changedTouches[0];
+      if (!touch) return;
+
+      const activeFace = findActiveReviewFace(event.target, gestureElement);
+      if (activeFace !== 'answer') {
+        touchOwnershipRef.current = 'browser';
+        touchEligibleForVerticalActionRef.current = false;
+        return;
+      }
+
+      const startedInGutter = didGestureStartInScrollGutter(event.target, gestureElement);
+      const scrollContainer = findFaceScrollContainer(event.target, gestureElement);
+      const isAtTop = isScrollContainerAtTop(scrollContainer, 1);
+      const shouldJsOwnTouch = canSwipe && !startedInGutter && isAtTop;
+
+      touchOwnershipRef.current = shouldJsOwnTouch ? 'js' : 'browser';
+      touchEligibleForVerticalActionRef.current = shouldJsOwnTouch;
+
+      if (!shouldJsOwnTouch) return;
+
+      event.preventDefault();
+      touchIdRef.current = touch.identifier;
+      beginInteraction({
+        clientX: touch.clientX,
+        clientY: touch.clientY,
+        target: event.target,
+        currentTarget: gestureElement,
+        inputType: 'touch',
+      });
+    };
+
+    gestureElement.addEventListener('touchstart', handleNativeTouchStart, { passive: false });
+    return () => {
+      gestureElement.removeEventListener('touchstart', handleNativeTouchStart);
+    };
+  }, [beginInteraction, canSwipe, enabled, gestureElement]);
 
   const handleClick = useCallback((event: React.MouseEvent<HTMLElement>) => {
     if (isSwipeCommitRef.current || suppressClickRef.current) {
