@@ -67,8 +67,8 @@ interface FlipCardProps {
   swipeActive: boolean;
   swipeAnimating: boolean;
   swipeDirection: 'horizontal' | 'vertical' | null;
-  swipeEnabled: boolean;
   canSwipe: boolean;
+  gestureRef: (node: HTMLDivElement | null) => void;
 }
 
 function FlipCard({
@@ -90,9 +90,28 @@ function FlipCard({
   swipeActive,
   swipeAnimating,
   swipeDirection,
-  swipeEnabled,
-  canSwipe
+  canSwipe,
+  gestureRef,
 }: FlipCardProps) {
+  const answerScrollRef = useRef<HTMLDivElement | null>(null);
+  const [answerScrollProgress, setAnswerScrollProgress] = useState(0);
+  const ANSWER_SCROLL_THUMB_HEIGHT_PERCENT = 28;
+
+  const updateAnswerScrollProgress = useCallback(() => {
+    const node = answerScrollRef.current;
+    if (!node) {
+      setAnswerScrollProgress(0);
+      return;
+    }
+
+    const maxScrollTop = Math.max(node.scrollHeight - node.clientHeight, 0);
+    setAnswerScrollProgress(maxScrollTop <= 1 ? 0 : Math.min(Math.max(node.scrollTop / maxScrollTop, 0), 1));
+  }, []);
+
+  useEffect(() => {
+    updateAnswerScrollProgress();
+  }, [answer, isFlipped, updateAnswerScrollProgress]);
+
   const swipeFeedbackOpacity = swipeDirection === 'horizontal'
     ? Math.min(Math.abs(swipeOffset.x) / 56, 1)
     : swipeOffset.y < 0
@@ -103,12 +122,13 @@ function FlipCard({
     <div className="review-card-frame review-card-settle">
       <div
         className="review-card-gesture review-card-shell relative w-full h-full cursor-pointer select-none"
+        ref={gestureRef}
         style={{
           perspective: '1000px',
-          touchAction: swipeEnabled && canSwipe ? 'pan-y pinch-zoom' : 'auto',
           transform: `translate3d(${swipeOffset.x}px, ${swipeOffset.y}px, 0) rotate(${swipeOffset.x * 0.045}deg)`,
           transition: swipeActive ? 'none' : swipeAnimating ? 'transform 180ms ease-out' : undefined,
         }}
+        data-review-card-gesture="true"
         onClick={onClick}
         onPointerDown={onPointerDown}
         onPointerMove={onPointerMove}
@@ -164,6 +184,7 @@ function FlipCard({
       >
         <div
           className="review-card-face review-card-face--question rounded-card bg-app-card-q p-8"
+          data-review-face="question"
         >
           <div className="review-card-face-content">
             <div className="review-card-scrollable review-card-scroll-region" data-review-card-scroll="true">
@@ -185,13 +206,32 @@ function FlipCard({
 
         <div
           className="review-card-face review-card-face--answer review-card-face--back rounded-card bg-app-card-a p-8"
+          data-review-face="answer"
         >
           <div className="review-card-face-content">
-            <div className="review-card-scrollable review-card-scroll-region" data-review-card-scroll="true">
+            <div
+              ref={answerScrollRef}
+              onScroll={updateAnswerScrollProgress}
+              className="review-card-scrollable review-card-scroll-region review-card-scroll-region--answer"
+              data-review-card-scroll="true"
+            >
               <div className="review-card-face-center">
                 <p className="text-xl font-medium text-app-primary text-center leading-relaxed">
                   {answer}
                 </p>
+              </div>
+            </div>
+            <div className="review-card-scroll-gutter" aria-hidden="true">
+              <div className="review-card-scroll-gutter-hitbox" data-review-scroll-gutter="true">
+                <div className="review-card-scroll-rail">
+                  <div
+                    className="review-card-scroll-thumb"
+                    style={{
+                      height: `${ANSWER_SCROLL_THUMB_HEIGHT_PERCENT}%`,
+                      transform: `translateY(${answerScrollProgress * (100 - ANSWER_SCROLL_THUMB_HEIGHT_PERCENT)}%)`,
+                    }}
+                  />
+                </div>
               </div>
             </div>
             <div className="review-card-hint pointer-events-none" aria-hidden="true">
@@ -635,10 +675,12 @@ export function ReviewPage({ mode = 'full', seedCardIds }: { mode?: SessionMode;
 
   const currentCard = state.queue[state.currentIndex];
   const currentCardAnswered = currentCard ? Boolean(state.outcomes[currentCard.id]) : false;
+  const [gestureElement, setGestureElement] = useState<HTMLDivElement | null>(null);
 
   const swipeHandlers = useReviewSwipe({
     enabled: settings.swipeGestures,
     canSwipe: Boolean(state.isFlipped && currentCard && !currentCardAnswered),
+    gestureElement,
     onTap: () => dispatch({ type: 'FLIP' }),
     onSwipeLeft: () => dispatch({ type: 'MARK_INCORRECT' }),
     onSwipeRight: () => dispatch({ type: 'MARK_CORRECT' }),
@@ -725,7 +767,7 @@ export function ReviewPage({ mode = 'full', seedCardIds }: { mode?: SessionMode;
         flagged: flaggedCount,
       }}
     >
-      <div className="flex flex-col flex-1 gap-6" aria-live="polite" aria-atomic="false">
+      <div className="flex flex-col flex-1 min-h-0 gap-6 overflow-hidden" aria-live="polite" aria-atomic="false">
         {currentCard ? (
           <>
             <Filmstrip
@@ -757,8 +799,8 @@ export function ReviewPage({ mode = 'full', seedCardIds }: { mode?: SessionMode;
                 swipeActive={swipeHandlers.isDragging}
                 swipeAnimating={swipeHandlers.isAnimating}
                 swipeDirection={swipeHandlers.swipeAxis}
-                swipeEnabled={settings.swipeGestures}
                 canSwipe={Boolean(state.isFlipped && currentCard && !currentCardAnswered)}
+                gestureRef={setGestureElement}
               />
             </div>
 
@@ -838,10 +880,10 @@ export function ReviewPage({ mode = 'full', seedCardIds }: { mode?: SessionMode;
 
             {/* Keyboard hints */}
             <p className="hidden text-center text-xs text-app-secondary/50 sm:block">
-              Space to flip · ←/→ navigate · 1 incorrect · 2 flag · 3 correct
+              Space to flip · ←/→ navigate · answer swipes: ← incorrect, → correct, ↑ flag · use right gutter to scroll
             </p>
             <p className="text-center text-xs text-app-secondary/50 sm:hidden">
-              Tap to flip · Swipe right correct · left incorrect · flag with button
+              Tap to flip · On answer: swipe → correct, ← incorrect, ↑ flag · use right rail to read long answers
             </p>
           </>
         ) : null}

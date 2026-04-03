@@ -21,7 +21,7 @@ export function ReviewShell({ children, exitTo, progress }: ReviewShellProps) {
     : 0;
 
   return (
-    <div className="min-h-screen bg-app-bg flex flex-col">
+    <div className="h-[100dvh] min-h-screen bg-app-bg flex flex-col overflow-hidden">
       {/* Top progress bar + controls */}
       <header className="sticky top-0 z-40 bg-app-bg-alt/85 backdrop-blur-md border-b border-app-border">
         <div className="max-w-3xl mx-auto px-6 h-14 flex items-center gap-4">
@@ -62,7 +62,7 @@ export function ReviewShell({ children, exitTo, progress }: ReviewShellProps) {
       </header>
 
       {/* Review stage */}
-      <main className="flex-1 flex flex-col max-w-3xl w-full mx-auto px-6 py-8">
+      <main className="flex-1 min-h-0 overflow-hidden flex flex-col max-w-3xl w-full mx-auto px-6 py-8">
         {children}
       </main>
 

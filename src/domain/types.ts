@@ -87,7 +87,7 @@ export interface AppSettings {
   shuffleCards: boolean;
   flipAnimation: boolean;
   autoShowAnswer: 0 | 3 | 5 | 10;
-  swipeGestures: boolean;    // stored but not implemented in Phase A
+  swipeGestures: boolean;
   studyReminders: boolean;   // stored but not implemented in Phase A
 }
 
