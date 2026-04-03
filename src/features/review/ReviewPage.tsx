@@ -110,7 +110,7 @@ function FlipCard({
     : swipeOffset.y < 0
       ? Math.min(Math.abs(swipeOffset.y) / 52, 1)
       : 0;
-  const overlayOpacity = swipeTint ? swipeFeedbackOpacity : buttonFeedback ? 1 : 0;
+  const overlayOpacity = buttonFeedback ? 1 : swipeTint ? swipeFeedbackOpacity : 0;
 
   return (
     <div className="review-card-frame review-card-settle">
