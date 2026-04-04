@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { PieChart, Pie, Cell, ResponsiveContainer } from 'recharts';
@@ -13,6 +13,10 @@ const COLORS = {
   incorrect: '#F44336',
   flagged:   '#FFC107',
 };
+
+const CONFETTI_COLORS = ['#4CAF50', '#FFC107', '#7C8DFF', '#F472B6', '#22D3EE'];
+const DESKTOP_CONFETTI_PIECES = 30;
+const MOBILE_CONFETTI_PIECES = 22;
 
 export function ResultsPage() {
   const { sessionId } = useParams<{ sessionId: string }>();
@@ -74,6 +78,33 @@ export function ResultsPage() {
     ? Math.round((session.completedAt - session.startedAt) / 1000)
     : null;
 
+  const [prefersReducedMotion, setPrefersReducedMotion] = useState(false);
+
+  useEffect(() => {
+    const mediaQuery = window.matchMedia('(prefers-reduced-motion: reduce)');
+    const updatePreference = () => setPrefersReducedMotion(mediaQuery.matches);
+
+    updatePreference();
+    mediaQuery.addEventListener('change', updatePreference);
+
+    return () => mediaQuery.removeEventListener('change', updatePreference);
+  }, []);
+
+  const isPerfectScore = pct === 100;
+
+  const confettiPieces = useMemo(
+    () =>
+      Array.from({ length: DESKTOP_CONFETTI_PIECES }, (_, index) => ({
+        id: index,
+        left: 8 + ((index * 11) % 84),
+        delay: (index % 6) * 70,
+        duration: (isPerfectScore ? 1100 : 900) + ((index * 73) % (isPerfectScore ? 560 : 420)),
+        color: CONFETTI_COLORS[index % CONFETTI_COLORS.length],
+        rotate: -35 + ((index * 19) % 70),
+      })),
+    [isPerfectScore],
+  );
+
   return (
     <StandardShell>
       <div className="max-w-2xl mx-auto">
@@ -91,7 +122,28 @@ export function ResultsPage() {
         )}
 
         {/* Headline */}
-        <h1 className="text-3xl font-bold text-app-primary mb-2">{headline}</h1>
+        <div
+          className={clsx('confetti-burst mb-2', isPerfectScore && 'confetti-burst--strong')}
+        >
+          {!prefersReducedMotion && (
+            <div aria-hidden="true">
+              {confettiPieces.map((piece) => (
+                <span
+                  key={piece.id}
+                  className={clsx('confetti-piece', piece.id >= MOBILE_CONFETTI_PIECES && 'confetti-piece--desktop-only')}
+                  style={{
+                    left: `${piece.left}%`,
+                    animationDelay: `${piece.delay}ms`,
+                    animationDuration: `${piece.duration}ms`,
+                    backgroundColor: piece.color,
+                    transform: `rotate(${piece.rotate}deg)`,
+                  }}
+                />
+              ))}
+            </div>
+          )}
+          <h1 className="text-3xl font-bold text-app-primary">{headline}</h1>
+        </div>
         {set && <p className="text-sm text-app-secondary mb-8">{set.title}</p>}
 
         {/* Score card */}
