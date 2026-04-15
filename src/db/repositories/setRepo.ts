@@ -15,7 +15,11 @@ export const setRepo = {
   },
 
   async create(data: Omit<FlashSet, 'id' | 'createdAt'>): Promise<number> {
-    return db.sets.add({ ...data, createdAt: Date.now() });
+    return db.sets.add({
+      ...data,
+      portableId: data.portableId ?? globalThis.crypto.randomUUID(),
+      createdAt: Date.now(),
+    });
   },
 
   async update(id: number, data: Partial<Omit<FlashSet, 'id'>>): Promise<void> {

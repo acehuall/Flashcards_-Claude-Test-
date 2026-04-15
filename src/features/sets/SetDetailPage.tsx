@@ -4,11 +4,22 @@ import { useLiveQuery } from 'dexie-react-hooks';
 import { db } from '../../db';
 import { deleteCard } from '../../domain/deleteService';
 import { parseCsvFile, buildImportSummary, exportSetToCsv } from '../../domain/csvService';
+import {
+  buildImportPreview,
+  executeImport,
+  exportSetToJson,
+  parseImportFile,
+} from '../../domain/importExportService';
+import type { ImportMode, ImportPlan, ImportPreview } from '../../domain/transferTypes';
 import { StandardShell } from '../../shared/layouts/StandardShell';
 import { Button } from '../../shared/components/Button';
+import { ImportPreviewModal } from '../../shared/components/ImportPreviewModal';
 import { EmptyState, LoadingSpinner, NotFound, PageHeader } from '../../shared/components/StateViews';
 import { ConfirmModal } from '../../shared/components/Modal';
 import { useToast } from '../../context/ToastContext';
+
+type ParsedImportFile = Awaited<ReturnType<typeof parseImportFile>>;
+type SetImportPlan = ImportPlan & { file: ParsedImportFile; targetPackId: number };
 
 export function SetDetailPage() {
   const { setId } = useParams<{ setId: string }>();
@@ -16,6 +27,7 @@ export function SetDetailPage() {
   const { addToast } = useToast();
   const id = setId ? parseInt(setId, 10) : NaN;
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const jsonFileInputRef = useRef<HTMLInputElement>(null);
 
   const set = useLiveQuery(() => (isNaN(id) ? undefined : db.sets.get(id)), [id]);
   const pack = useLiveQuery(
@@ -29,7 +41,12 @@ export function SetDetailPage() {
 
   const [deleteTarget, setDeleteTarget] = useState<{ id: number; question: string } | null>(null);
   const [deleting, setDeleting] = useState(false);
-  const [importing, setImporting] = useState(false);
+  const [importingCsv, setImportingCsv] = useState(false);
+  const [previewOpen, setPreviewOpen] = useState(false);
+  const [preview, setPreview] = useState<ImportPreview | null>(null);
+  const [importMode, setImportMode] = useState<ImportMode>('copy');
+  const [pendingImportFile, setPendingImportFile] = useState<ParsedImportFile | null>(null);
+  const [importingJson, setImportingJson] = useState(false);
 
   if (set === undefined || cards === undefined) return <StandardShell><LoadingSpinner /></StandardShell>;
   if (set === null || isNaN(id)) return <StandardShell><NotFound message="Set not found" /></StandardShell>;
@@ -53,7 +70,7 @@ export function SetDetailPage() {
     if (!file) return;
     e.target.value = '';
 
-    setImporting(true);
+    setImportingCsv(true);
     try {
       const result = await parseCsvFile(file);
       if (!result.ok) {
@@ -71,8 +88,71 @@ export function SetDetailPage() {
     } catch {
       addToast('Import failed. Please try again.', 'error');
     } finally {
-      setImporting(false);
+      setImportingCsv(false);
     }
+  };
+
+  const handleJsonImportSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    e.target.value = '';
+
+    try {
+      const parsed = await parseImportFile(file);
+      if (parsed.scope !== 'set') {
+        addToast('Only Set JSON imports are supported right now.', 'error');
+        return;
+      }
+
+      const nextPreview = await buildImportPreview(parsed, set.packId);
+      setPendingImportFile(parsed);
+      setPreview(nextPreview);
+      setImportMode('copy');
+      setPreviewOpen(true);
+    } catch (error) {
+      addToast(error instanceof Error ? error.message : 'Import failed. Please try again.', 'error');
+    }
+  };
+
+  const handleConfirmJsonImport = async () => {
+    if (!pendingImportFile || !preview) {
+      return;
+    }
+
+    setImportingJson(true);
+    try {
+      await executeImport({
+        mode: importMode,
+        creates: preview.plannedCreates,
+        merges: preview.plannedMerges,
+        replacements: preview.plannedReplacements,
+        skipped: 0,
+        warnings: preview.warnings,
+        conflicts: preview.conflicts,
+        file: pendingImportFile,
+        targetPackId: set.packId,
+      } as SetImportPlan);
+
+      setPreviewOpen(false);
+      setPreview(null);
+      setPendingImportFile(null);
+      addToast(`Imported set JSON with ${preview.counts.cards} card${preview.counts.cards !== 1 ? 's' : ''}`, 'success');
+    } catch (error) {
+      addToast(error instanceof Error ? error.message : 'Import failed. Please try again.', 'error');
+    } finally {
+      setImportingJson(false);
+    }
+  };
+
+  const handleCancelJsonImport = () => {
+    if (importingJson) {
+      return;
+    }
+
+    setPreviewOpen(false);
+    setPreview(null);
+    setPendingImportFile(null);
+    setImportMode('copy');
   };
 
   const handleExport = () => {
@@ -82,6 +162,15 @@ export function SetDetailPage() {
     }
     exportSetToCsv(set.title, cards);
     addToast(`Exported ${cards.length} cards`, 'success');
+  };
+
+  const handleJsonExport = () => {
+    try {
+      exportSetToJson(set, cards);
+      addToast(`Exported set JSON with ${cards.length} card${cards.length !== 1 ? 's' : ''}`, 'success');
+    } catch (error) {
+      addToast(error instanceof Error ? error.message : 'Failed to export set JSON', 'error');
+    }
   };
 
   const canReview = (cards?.length ?? 0) > 0;
@@ -106,7 +195,7 @@ export function SetDetailPage() {
             <Button
               variant="secondary"
               size="sm"
-              loading={importing}
+              loading={importingCsv}
               onClick={() => fileInputRef.current?.click()}
               title="Import cards from CSV"
               className="w-full justify-center whitespace-nowrap sm:w-auto"
@@ -115,6 +204,27 @@ export function SetDetailPage() {
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
               </svg>
               Import CSV
+            </Button>
+            <input
+              ref={jsonFileInputRef}
+              type="file"
+              accept=".json,application/json"
+              className="hidden"
+              onChange={handleJsonImportSelect}
+              aria-label="Import Set JSON file"
+            />
+            <Button
+              variant="secondary"
+              size="sm"
+              loading={importingJson}
+              onClick={() => jsonFileInputRef.current?.click()}
+              title="Import set from JSON"
+              className="w-full justify-center whitespace-nowrap sm:w-auto"
+            >
+              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12" />
+              </svg>
+              Import Set JSON
             </Button>
             <Button
               variant="secondary"
@@ -128,6 +238,18 @@ export function SetDetailPage() {
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
               </svg>
               Export CSV
+            </Button>
+            <Button
+              variant="secondary"
+              size="sm"
+              onClick={handleJsonExport}
+              title="Export set to JSON"
+              className="w-full justify-center whitespace-nowrap sm:w-auto"
+            >
+              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+              </svg>
+              Export Set JSON
             </Button>
             <Button
               size="sm"
@@ -231,6 +353,15 @@ export function SetDetailPage() {
         }
         confirmLabel={deleting ? 'Deleting…' : 'Delete Card'}
         danger
+      />
+      <ImportPreviewModal
+        open={previewOpen}
+        preview={preview}
+        mode={importMode}
+        onModeChange={setImportMode}
+        onConfirm={handleConfirmJsonImport}
+        onCancel={handleCancelJsonImport}
+        loading={importingJson}
       />
     </StandardShell>
   );
