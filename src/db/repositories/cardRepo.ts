@@ -11,7 +11,11 @@ export const cardRepo = {
   },
 
   async create(data: Omit<Card, 'id' | 'createdAt'>): Promise<number> {
-    return db.cards.add({ ...data, createdAt: Date.now() });
+    return db.cards.add({
+      ...data,
+      portableId: data.portableId ?? globalThis.crypto.randomUUID(),
+      createdAt: Date.now(),
+    });
   },
 
   async update(id: number, data: Partial<Omit<Card, 'id' | 'setId'>>): Promise<void> {
@@ -24,7 +28,11 @@ export const cardRepo = {
 
   async bulkCreate(cards: Omit<Card, 'id' | 'createdAt'>[]): Promise<number[]> {
     const now = Date.now();
-    const withTimestamps = cards.map((c) => ({ ...c, createdAt: now }));
+    const withTimestamps = cards.map((c) => ({
+      ...c,
+      portableId: c.portableId ?? globalThis.crypto.randomUUID(),
+      createdAt: now,
+    }));
     // Dexie bulkAdd returns the last inserted id, but we want all keys
     const keys = await db.cards.bulkAdd(withTimestamps, { allKeys: true });
     return keys as number[];
