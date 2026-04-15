@@ -11,7 +11,11 @@ export const packRepo = {
   },
 
   async create(data: Omit<Pack, 'id' | 'createdAt'>): Promise<number> {
-    return db.packs.add({ ...data, createdAt: Date.now() });
+    return db.packs.add({
+      ...data,
+      portableId: data.portableId ?? globalThis.crypto.randomUUID(),
+      createdAt: Date.now(),
+    });
   },
 
   async update(id: number, data: Partial<Omit<Pack, 'id'>>): Promise<void> {
