@@ -2,7 +2,7 @@
 
 export interface Pack {
   id?: number;
-  portableID?: string;
+  portableId?: string;
   name: string;
   color: string;
   createdAt: number;
@@ -10,7 +10,7 @@ export interface Pack {
 
 export interface FlashSet {
   id?: number;
-  portableID?: string;
+  portableId?: string;
   packId: number;
   title: string;
   description?: string;
@@ -19,7 +19,7 @@ export interface FlashSet {
 
 export interface Card {
   id?: number;
-  portableID?: string;
+  portableId?: string;
   setId: number;
   question: string;
   answer: string;
@@ -33,7 +33,7 @@ export type SessionMode = 'full' | 'flagged' | 'incorrect-only';
 
 export interface Session {
   id?: number;
-  portableID?: string;
+  portableId?: string;
   setId: number;
   startedAt: number;
   completedAt?: number;
