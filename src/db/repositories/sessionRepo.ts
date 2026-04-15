@@ -5,7 +5,10 @@ import type { Session, Result, Stat, ActiveSession, Outcome } from '../../domain
 
 export const sessionRepo = {
   async create(data: Omit<Session, 'id'>): Promise<number> {
-    return db.sessions.add(data);
+    return db.sessions.add({
+      ...data,
+      portableId: data.portableId ?? globalThis.crypto.randomUUID(),
+    });
   },
 
   async delete(id: number): Promise<void> {

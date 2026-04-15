@@ -1,20 +1,31 @@
-import React, { useState } from 'react';
+import React, { useRef, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { useLiveQuery } from 'dexie-react-hooks';
 import { db } from '../../db';
 import { deleteSet } from '../../domain/deleteService';
+import {
+  buildImportPreview,
+  executeImport,
+  exportPackToJson,
+  parseImportFile,
+} from '../../domain/importExportService';
+import type { ExportOptions, ImportMode, ImportPlan, ImportPreview } from '../../domain/transferTypes';
 import { StandardShell } from '../../shared/layouts/StandardShell';
 import { Button } from '../../shared/components/Button';
+import { ExportOptionsModal } from '../../shared/components/ExportOptionsModal';
+import { ImportPreviewModal } from '../../shared/components/ImportPreviewModal';
 import { EmptyState, LoadingSpinner, NotFound, PageHeader } from '../../shared/components/StateViews';
 import { ConfirmModal } from '../../shared/components/Modal';
 import { useToast } from '../../context/ToastContext';
-import { getPackColorStyle } from '../../shared/components/PackColors';
-import clsx from 'clsx';
+
+type ParsedImportFile = Awaited<ReturnType<typeof parseImportFile>>;
+type PendingImportPlan = ImportPlan & { file: ParsedImportFile; targetPackId?: number };
 
 export function PackDetailPage() {
   const { packId } = useParams<{ packId: string }>();
   const navigate = useNavigate();
   const { addToast } = useToast();
+  const importInputRef = useRef<HTMLInputElement>(null);
   const id = packId ? parseInt(packId, 10) : NaN;
 
   const pack = useLiveQuery(() => (isNaN(id) ? undefined : db.packs.get(id)), [id]);
@@ -32,11 +43,16 @@ export function PackDetailPage() {
 
   const [deleteTarget, setDeleteTarget] = useState<{ id: number; title: string } | null>(null);
   const [deleting, setDeleting] = useState(false);
+  const [exportOptionsOpen, setExportOptionsOpen] = useState(false);
+  const [exportingPack, setExportingPack] = useState(false);
+  const [previewOpen, setPreviewOpen] = useState(false);
+  const [preview, setPreview] = useState<ImportPreview | null>(null);
+  const [importMode, setImportMode] = useState<ImportMode>('copy');
+  const [pendingImportFile, setPendingImportFile] = useState<ParsedImportFile | null>(null);
+  const [importingJson, setImportingJson] = useState(false);
 
   if (pack === undefined || sets === undefined) return <StandardShell><LoadingSpinner /></StandardShell>;
   if (pack === null || isNaN(id)) return <StandardShell><NotFound message="Pack not found" /></StandardShell>;
-
-  const colorStyle = getPackColorStyle(pack.color);
 
   const handleDelete = async () => {
     if (!deleteTarget) return;
@@ -52,19 +68,129 @@ export function PackDetailPage() {
     }
   };
 
+  const resetImportState = () => {
+    setPreviewOpen(false);
+    setPreview(null);
+    setPendingImportFile(null);
+    setImportMode('copy');
+  };
+
+  const handleImportSelect = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+    event.target.value = '';
+
+    try {
+      const parsed = await parseImportFile(file);
+      if (parsed.scope === 'library') {
+        addToast('Library JSON can only be imported from the Home page.', 'error');
+        return;
+      }
+
+      const nextPreview = parsed.scope === 'set'
+        ? await buildImportPreview(parsed, pack.id!)
+        : await buildImportPreview(parsed, { targetLabel: 'Entire library', currentPackName: pack.name });
+
+      setPendingImportFile(parsed);
+      setPreview(nextPreview);
+      setImportMode('copy');
+      setPreviewOpen(true);
+    } catch (error) {
+      addToast(error instanceof Error ? error.message : 'Import failed. Please try again.', 'error');
+      resetImportState();
+    }
+  };
+
+  const handleConfirmImport = async () => {
+    if (!pendingImportFile || !preview) {
+      return;
+    }
+
+    setImportingJson(true);
+    try {
+      await executeImport({
+        mode: importMode,
+        creates: preview.plannedCreates,
+        merges: preview.plannedMerges,
+        replacements: preview.plannedReplacements,
+        skipped: 0,
+        warnings: preview.warnings,
+        conflicts: preview.conflicts,
+        file: pendingImportFile,
+        targetPackId: pendingImportFile.scope === 'set' ? pack.id! : undefined,
+      } as PendingImportPlan);
+
+      addToast(buildImportSuccessMessage(pendingImportFile.scope, preview), 'success');
+      resetImportState();
+    } catch (error) {
+      addToast(error instanceof Error ? error.message : 'Import failed. Please try again.', 'error');
+    } finally {
+      setImportingJson(false);
+    }
+  };
+
+  const handleCancelImport = () => {
+    if (importingJson) {
+      return;
+    }
+
+    resetImportState();
+  };
+
+  const handleExportPack = async (options: ExportOptions) => {
+    setExportingPack(true);
+    try {
+      await exportPackToJson(pack.id!, options);
+      addToast('Exported pack JSON', 'success');
+      setExportOptionsOpen(false);
+    } catch (error) {
+      addToast(error instanceof Error ? error.message : 'Failed to export pack JSON', 'error');
+    } finally {
+      setExportingPack(false);
+    }
+  };
+
   return (
     <StandardShell>
+      <input
+        ref={importInputRef}
+        type="file"
+        accept=".json,application/json"
+        className="hidden"
+        onChange={handleImportSelect}
+        aria-label="Import pack or set JSON file"
+      />
       <PageHeader
         title={pack.name}
         subtitle={`${sets.length} set${sets.length !== 1 ? 's' : ''}`}
         back={{ label: 'All packs', to: '/' }}
         actions={
-          <Button onClick={() => navigate(`/create/set/${pack.id}`)}>
-            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-            </svg>
-            New Set
-          </Button>
+          <div className="grid grid-cols-2 gap-2 sm:flex sm:flex-wrap sm:justify-end">
+            <Button
+              variant="secondary"
+              size="sm"
+              onClick={() => importInputRef.current?.click()}
+              disabled={importingJson}
+              className="w-full justify-center whitespace-nowrap sm:w-auto"
+            >
+              Import into Pack
+            </Button>
+            <Button
+              variant="secondary"
+              size="sm"
+              onClick={() => setExportOptionsOpen(true)}
+              disabled={exportingPack}
+              className="w-full justify-center whitespace-nowrap sm:w-auto"
+            >
+              Export Pack
+            </Button>
+            <Button onClick={() => navigate(`/create/set/${pack.id}`)} size="sm" className="w-full justify-center whitespace-nowrap sm:w-auto">
+              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+              </svg>
+              New Set
+            </Button>
+          </div>
         }
       />
 
@@ -142,6 +268,34 @@ export function PackDetailPage() {
         confirmLabel={deleting ? 'Deleting…' : 'Delete Set'}
         danger
       />
+      <ExportOptionsModal
+        open={exportOptionsOpen}
+        scopeLabel={`Pack: ${pack.name}`}
+        onConfirm={handleExportPack}
+        onCancel={() => setExportOptionsOpen(false)}
+        loading={exportingPack}
+      />
+      <ImportPreviewModal
+        open={previewOpen}
+        preview={preview}
+        mode={importMode}
+        onModeChange={setImportMode}
+        onConfirm={handleConfirmImport}
+        onCancel={handleCancelImport}
+        loading={importingJson}
+        scope={pendingImportFile?.scope}
+      />
     </StandardShell>
   );
+}
+
+function buildImportSuccessMessage(scope: ParsedImportFile['scope'], preview: ImportPreview): string {
+  switch (scope) {
+    case 'set':
+      return `Imported set JSON with ${preview.counts.cards} card${preview.counts.cards !== 1 ? 's' : ''}`;
+    case 'pack':
+      return 'Imported pack JSON as a new separate pack';
+    case 'library':
+      return `Imported library JSON with ${preview.counts.packs} pack${preview.counts.packs !== 1 ? 's' : ''}`;
+  }
 }
