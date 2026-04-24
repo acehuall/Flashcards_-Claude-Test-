@@ -2,31 +2,38 @@ import { db } from '../index';
 import type { FlashSet } from '../../domain/types';
 
 export const setRepo = {
-  getAll(): Promise<FlashSet[]> {
-    return db.sets.orderBy('createdAt').toArray();
+  async getAll(): Promise<FlashSet[]> {
+    const all = await db.sets.orderBy('createdAt').toArray();
+    return all.filter((s) => !s.deletedAt);
   },
 
-  getByPackId(packId: number): Promise<FlashSet[]> {
-    return db.sets.where('packId').equals(packId).sortBy('createdAt');
+  async getByPackId(packId: number): Promise<FlashSet[]> {
+    const all = await db.sets.where('packId').equals(packId).sortBy('createdAt');
+    return all.filter((s) => !s.deletedAt);
   },
 
-  getById(id: number): Promise<FlashSet | undefined> {
-    return db.sets.get(id);
+  async getById(id: number): Promise<FlashSet | undefined> {
+    const s = await db.sets.get(id);
+    return s && !s.deletedAt ? s : undefined;
   },
 
   async create(data: Omit<FlashSet, 'id' | 'createdAt'>): Promise<number> {
+    const now = Date.now();
     return db.sets.add({
       ...data,
       portableId: data.portableId ?? globalThis.crypto.randomUUID(),
-      createdAt: Date.now(),
+      createdAt: now,
+      updatedAt: now,
+      syncStatus: 'pending',
     });
   },
 
   async update(id: number, data: Partial<Omit<FlashSet, 'id'>>): Promise<void> {
-    await db.sets.update(id, data);
+    await db.sets.update(id, { ...data, updatedAt: Date.now(), syncStatus: 'pending' });
   },
 
-  delete(id: number): Promise<void> {
-    return db.sets.delete(id);
+  async delete(id: number): Promise<void> {
+    const now = Date.now();
+    await db.sets.update(id, { deletedAt: now, updatedAt: now, syncStatus: 'pending' });
   },
 };

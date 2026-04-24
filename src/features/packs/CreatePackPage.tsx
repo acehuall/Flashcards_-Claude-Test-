@@ -26,7 +26,15 @@ export function CreatePackPage() {
 
   const onSubmit = async (data: FormValues) => {
     try {
-      const id = await db.packs.add({ name: data.name.trim(), color: data.color, createdAt: Date.now() });
+      const now = Date.now();
+      const id = await db.packs.add({
+        portableId: crypto.randomUUID(),
+        name: data.name.trim(),
+        color: data.color,
+        createdAt: now,
+        updatedAt: now,
+        syncStatus: 'pending',
+      });
       addToast(`Pack "${data.name}" created`, 'success');
       navigate(`/pack/${id}`);
     } catch {

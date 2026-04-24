@@ -1,11 +1,16 @@
 // ─── Core Entity Types ────────────────────────────────────────────────────────
 
+export type SyncStatus = 'pending' | 'synced';
+
 export interface Pack {
   id?: number;
   portableId?: string;
   name: string;
   color: string;
   createdAt: number;
+  updatedAt?: number;
+  deletedAt?: number;
+  syncStatus?: SyncStatus;
 }
 
 export interface FlashSet {
@@ -15,6 +20,9 @@ export interface FlashSet {
   title: string;
   description?: string;
   createdAt: number;
+  updatedAt?: number;
+  deletedAt?: number;
+  syncStatus?: SyncStatus;
 }
 
 export interface Card {
@@ -24,6 +32,9 @@ export interface Card {
   question: string;
   answer: string;
   createdAt: number;
+  updatedAt?: number;
+  deletedAt?: number;
+  syncStatus?: SyncStatus;
 }
 
 // ─── Session & Results ────────────────────────────────────────────────────────

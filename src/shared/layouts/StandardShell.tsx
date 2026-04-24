@@ -1,6 +1,7 @@
 import React from 'react';
 import { Link, NavLink, useLocation } from 'react-router-dom';
 import { ToastContainer } from '../components/Toast';
+import { SyncStatusBadge } from '../components/SyncStatusBadge';
 import clsx from 'clsx';
 
 const navItems = [
@@ -48,6 +49,7 @@ export function StandardShell({ children }: StandardShellProps) {
           </Link>
 
           <nav className="flex items-center gap-1" aria-label="Main navigation">
+            <SyncStatusBadge />
             {navItems.map((item) => (
               <NavLink
                 key={item.to}

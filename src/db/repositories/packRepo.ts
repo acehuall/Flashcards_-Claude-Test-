@@ -2,27 +2,33 @@ import { db } from '../index';
 import type { Pack } from '../../domain/types';
 
 export const packRepo = {
-  getAll(): Promise<Pack[]> {
-    return db.packs.orderBy('createdAt').reverse().toArray();
+  async getAll(): Promise<Pack[]> {
+    const all = await db.packs.orderBy('createdAt').reverse().toArray();
+    return all.filter((p) => !p.deletedAt);
   },
 
-  getById(id: number): Promise<Pack | undefined> {
-    return db.packs.get(id);
+  async getById(id: number): Promise<Pack | undefined> {
+    const p = await db.packs.get(id);
+    return p && !p.deletedAt ? p : undefined;
   },
 
   async create(data: Omit<Pack, 'id' | 'createdAt'>): Promise<number> {
+    const now = Date.now();
     return db.packs.add({
       ...data,
       portableId: data.portableId ?? globalThis.crypto.randomUUID(),
-      createdAt: Date.now(),
+      createdAt: now,
+      updatedAt: now,
+      syncStatus: 'pending',
     });
   },
 
   async update(id: number, data: Partial<Omit<Pack, 'id'>>): Promise<void> {
-    await db.packs.update(id, data);
+    await db.packs.update(id, { ...data, updatedAt: Date.now(), syncStatus: 'pending' });
   },
 
-  delete(id: number): Promise<void> {
-    return db.packs.delete(id);
+  async delete(id: number): Promise<void> {
+    const now = Date.now();
+    await db.packs.update(id, { deletedAt: now, updatedAt: now, syncStatus: 'pending' });
   },
 };

@@ -213,13 +213,42 @@ structural rewrites:
 
 ---
 
+## Authentication (Supabase — Phase 1)
+
+Supabase email OTP / magic-link authentication has been added. Local-only mode still works with no configuration — simply leave the env vars unset.
+
+### Environment variables
+
+Copy `.env.example` to `.env.local` and fill in your Supabase project values:
+
+```
+VITE_SUPABASE_URL=https://<your-project>.supabase.co
+VITE_SUPABASE_PUBLISHABLE_KEY=sb_publishable_...
+```
+
+### Supabase dashboard setup
+
+1. Enable **Email** provider under Authentication → Providers.
+2. Add your site URL (e.g. `http://localhost:5173` for dev, your Vercel URL for prod) to Authentication → URL Configuration → Redirect URLs.
+3. No database tables are needed for auth-only mode.
+
+### Status
+
+| Feature          | Status                         |
+|------------------|-------------------------------|
+| Magic-link login | Implemented                   |
+| Local-only mode  | Works with no env vars        |
+| Cloud sync       | Not implemented yet (Phase 2) |
+
+---
+
 ## Deployment (Vercel)
 
 ```bash
 # Set root directory to flashcard-app (or repo root)
 # Build command:  npm run build
 # Output dir:     dist
-# No env vars required for Phase A
+# Add VITE_SUPABASE_URL and VITE_SUPABASE_PUBLISHABLE_KEY for auth-enabled deployments
 ```
 
 Auto-deploys on push to `main`. PRs get preview deployments automatically.

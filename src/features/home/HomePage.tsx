@@ -28,12 +28,17 @@ export function HomePage() {
   const importPackInputRef = useRef<HTMLInputElement>(null);
   const importLibraryInputRef = useRef<HTMLInputElement>(null);
 
-  const packs = useLiveQuery(() => db.packs.orderBy('createdAt').reverse().toArray(), []);
+  const packs = useLiveQuery(async () => {
+    const all = await db.packs.orderBy('createdAt').reverse().toArray();
+    return all.filter((p) => !p.deletedAt);
+  }, []);
   const setCounts = useLiveQuery(
     async () => {
       const all = await db.sets.toArray();
       const counts: Record<number, number> = {};
-      for (const s of all) counts[s.packId] = (counts[s.packId] ?? 0) + 1;
+      for (const s of all) {
+        if (!s.deletedAt) counts[s.packId] = (counts[s.packId] ?? 0) + 1;
+      }
       return counts;
     },
     [],

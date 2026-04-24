@@ -1,9 +1,11 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { StandardShell } from '../../shared/layouts/StandardShell';
 import { PageHeader } from '../../shared/components/StateViews';
 import { Button } from '../../shared/components/Button';
 import { useSettings } from '../../context/SettingsContext';
 import { useToast } from '../../context/ToastContext';
+import { useAuth } from '../../context/AuthContext';
+import { useSync } from '../../context/SyncContext';
 import clsx from 'clsx';
 
 interface ToggleProps {
@@ -76,6 +78,111 @@ function SelectRow({ label, description, value, options, onChange }: SelectRowPr
         ))}
       </select>
     </div>
+  );
+}
+
+function CloudSyncSection() {
+  const { user, isLoading, isLocalOnly, signIn, signOut } = useAuth();
+  const { status, lastSyncedAt, error: syncError, sync } = useSync();
+  const { addToast } = useToast();
+  const [email, setEmail] = useState('');
+  const [isSending, setIsSending] = useState(false);
+  const [sent, setSent] = useState(false);
+
+  if (isLocalOnly) {
+    return (
+      <div className="py-4">
+        <p className="text-sm text-app-secondary">
+          Cloud sync not configured. Add Supabase environment variables to enable authentication.
+        </p>
+      </div>
+    );
+  }
+
+  if (isLoading) {
+    return <div className="py-4"><p className="text-sm text-app-secondary">Loading…</p></div>;
+  }
+
+  if (user) {
+    const statusLabel: Record<typeof status, string> = {
+      idle:    'Not synced yet',
+      syncing: 'Syncing…',
+      synced:  lastSyncedAt
+        ? `Last synced ${new Date(lastSyncedAt).toLocaleTimeString()}`
+        : 'Synced',
+      error:   `Error: ${syncError ?? 'Unknown error'}`,
+      offline: 'Offline — will sync when reconnected',
+    };
+
+    return (
+      <div className="py-4 space-y-3">
+        <div>
+          <p className="text-sm font-medium text-app-primary">{user.email}</p>
+          <p className="text-xs text-app-secondary mt-0.5">{statusLabel[status]}</p>
+        </div>
+        <Button
+          variant="primary"
+          size="sm"
+          onClick={async () => {
+            const result = await sync();
+            if (result.ok) {
+              addToast('Sync complete', 'success');
+            } else if (result.error) {
+              addToast(`Sync failed: ${result.error}`, 'error');
+            }
+          }}
+          disabled={status === 'syncing' || status === 'offline'}
+        >
+          {status === 'syncing' ? 'Syncing…' : 'Sync now'}
+        </Button>
+        <Button variant="ghost" size="sm" onClick={async () => { await signOut(); addToast('Signed out', 'info'); }}>
+          Sign out
+        </Button>
+      </div>
+    );
+  }
+
+  if (sent) {
+    return (
+      <div className="py-4">
+        <p className="text-sm text-app-primary font-medium">Check your inbox</p>
+        <p className="text-xs text-app-secondary mt-1">A magic link was sent to {email}. Click it to sign in.</p>
+        <button className="text-xs text-app-secondary underline mt-2" onClick={() => setSent(false)}>
+          Try a different email
+        </button>
+      </div>
+    );
+  }
+
+  const handleSend = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!email.trim()) return;
+    setIsSending(true);
+    const { error } = await signIn(email.trim());
+    setIsSending(false);
+    if (error) {
+      addToast(`Could not send link: ${error}`, 'error');
+    } else {
+      setSent(true);
+      addToast('Magic link sent — check your inbox', 'success');
+    }
+  };
+
+  return (
+    <form onSubmit={handleSend} className="py-4 space-y-3">
+      <p className="text-xs text-app-secondary">Sign in to enable cloud sync (coming soon).</p>
+      <input
+        type="email"
+        value={email}
+        onChange={(e) => setEmail(e.target.value)}
+        placeholder="your@email.com"
+        required
+        className="w-full bg-app-bg-alt border border-app-border text-app-primary text-sm rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-app-nav"
+      />
+      <Button type="submit" variant="primary" size="sm" disabled={isSending}>
+        {isSending ? 'Sending…' : 'Send magic link'}
+      </Button>
+    </form>
   );
 }
 
@@ -155,6 +262,16 @@ export function SettingsPage() {
               badge="Phase B"
               disabled
             />
+          </div>
+        </section>
+
+        {/* Cloud sync / Account section */}
+        <section className="mb-8">
+          <h2 className="text-xs font-semibold uppercase tracking-widest text-app-secondary mb-1 px-1">
+            Account
+          </h2>
+          <div className="bg-app-surface border border-app-border rounded-card px-5">
+            <CloudSyncSection />
           </div>
         </section>
 
