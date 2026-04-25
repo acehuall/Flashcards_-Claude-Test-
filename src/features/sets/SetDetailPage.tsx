@@ -34,10 +34,11 @@ export function SetDetailPage() {
     () => (set?.packId ? db.packs.get(set.packId) : undefined),
     [set?.packId],
   );
-  const cards = useLiveQuery(
-    () => (isNaN(id) ? [] : db.cards.where('setId').equals(id).sortBy('createdAt')),
-    [id],
-  );
+  const cards = useLiveQuery(async () => {
+    if (isNaN(id)) return [];
+    const all = await db.cards.where('setId').equals(id).sortBy('createdAt');
+    return all.filter((c) => !c.deletedAt);
+  }, [id]);
 
   const [deleteTarget, setDeleteTarget] = useState<{ id: number; question: string } | null>(null);
   const [deleting, setDeleting] = useState(false);
@@ -80,7 +81,15 @@ export function SetDetailPage() {
 
       const now = Date.now();
       await db.cards.bulkAdd(
-        result.rows.map((r) => ({ setId: id, question: r.question, answer: r.answer, createdAt: now })),
+        result.rows.map((r) => ({
+          setId: id,
+          portableId: crypto.randomUUID(),
+          question: r.question,
+          answer: r.answer,
+          createdAt: now,
+          updatedAt: now,
+          syncStatus: 'pending' as const,
+        })),
       );
 
       const summary = buildImportSummary({ imported: result.rows.length, skipped: result.skipped, errors: [] });

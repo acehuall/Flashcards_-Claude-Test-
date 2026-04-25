@@ -30,7 +30,16 @@ export function CreateCardPage() {
 
   const onSubmit = async (data: FormValues, event?: React.BaseSyntheticEvent) => {
     try {
-      await db.cards.add({ setId: id, question: data.question.trim(), answer: data.answer.trim(), createdAt: Date.now() });
+      const now = Date.now();
+      await db.cards.add({
+        portableId: crypto.randomUUID(),
+        setId: id,
+        question: data.question.trim(),
+        answer: data.answer.trim(),
+        createdAt: now,
+        updatedAt: now,
+        syncStatus: 'pending',
+      });
       addToast('Card added', 'success');
       reset();
       // focus back to question field for quick entry
@@ -117,7 +126,12 @@ export function EditCardPage() {
 
   const onSubmit = async (data: FormValues) => {
     try {
-      await db.cards.update(id, { question: data.question.trim(), answer: data.answer.trim() });
+      await db.cards.update(id, {
+        question: data.question.trim(),
+        answer: data.answer.trim(),
+        updatedAt: Date.now(),
+        syncStatus: 'pending',
+      });
       addToast('Card updated', 'success');
       navigate(`/set/${card?.setId}`);
     } catch {

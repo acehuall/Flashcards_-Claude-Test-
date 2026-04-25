@@ -1,0 +1,12 @@
+# Dependencies
+node_modules/
+
+# Build output
+dist/
+
+# Local env files — never commit these
+.env.local
+.env.*.local
+
+# Editor
+.DS_Store

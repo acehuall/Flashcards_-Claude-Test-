@@ -61,6 +61,15 @@ export class FlashcardDatabase extends Dexie {
         await assignPortableIds(tx.table<Card, number>('cards'));
         await assignPortableIds(tx.table<Session, number>('sessions'));
       });
+
+    // v3: add syncStatus index (for querying pending records) to the three synced tables.
+    // updatedAt / deletedAt are stored as plain fields and filtered in JS — no index needed.
+    // No upgrade() required: new fields default to undefined on existing records.
+    this.version(3).stores({
+      packs: '++id, &portableId, name, createdAt, syncStatus',
+      sets:  '++id, &portableId, packId, title, createdAt, syncStatus',
+      cards: '++id, &portableId, setId, createdAt, syncStatus',
+    });
   }
 }
 

@@ -29,15 +29,18 @@ export function PackDetailPage() {
   const id = packId ? parseInt(packId, 10) : NaN;
 
   const pack = useLiveQuery(() => (isNaN(id) ? undefined : db.packs.get(id)), [id]);
-  const sets = useLiveQuery(
-    () => (isNaN(id) ? [] : db.sets.where('packId').equals(id).sortBy('createdAt')),
-    [id],
-  );
+  const sets = useLiveQuery(async () => {
+    if (isNaN(id)) return [];
+    const all = await db.sets.where('packId').equals(id).sortBy('createdAt');
+    return all.filter((s) => !s.deletedAt);
+  }, [id]);
   const cardCounts = useLiveQuery(async () => {
     if (isNaN(id)) return {};
     const allCards = await db.cards.toArray();
     const counts: Record<number, number> = {};
-    for (const c of allCards) counts[c.setId] = (counts[c.setId] ?? 0) + 1;
+    for (const c of allCards) {
+      if (!c.deletedAt) counts[c.setId] = (counts[c.setId] ?? 0) + 1;
+    }
     return counts;
   }, [id]);
 

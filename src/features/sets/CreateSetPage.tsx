@@ -28,11 +28,15 @@ export function CreateSetPage() {
 
   const onSubmit = async (data: FormValues) => {
     try {
+      const now = Date.now();
       const setId = await db.sets.add({
+        portableId: crypto.randomUUID(),
         packId: id,
         title: data.title.trim(),
         description: data.description.trim() || undefined,
-        createdAt: Date.now(),
+        createdAt: now,
+        updatedAt: now,
+        syncStatus: 'pending',
       });
       addToast(`Set "${data.title}" created`, 'success');
       navigate(`/set/${setId}`);
