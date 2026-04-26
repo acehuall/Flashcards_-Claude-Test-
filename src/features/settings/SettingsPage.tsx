@@ -82,7 +82,7 @@ function SelectRow({ label, description, value, options, onChange }: SelectRowPr
 }
 
 function CloudSyncSection() {
-  const { user, isLoading, isLocalOnly, signIn, signOut } = useAuth();
+  const { user, isLoading, isLocalOnly, signIn, signInWithGoogle, signOut } = useAuth();
   const { status, lastSyncedAt, error: syncError, sync } = useSync();
   const { addToast } = useToast();
   const [email, setEmail] = useState('');
@@ -168,9 +168,21 @@ function CloudSyncSection() {
     }
   };
 
+  const handleGoogleSignIn = async () => {
+    const { error } = await signInWithGoogle();
+    if (error) {
+      addToast(`Google sign-in failed: ${error}`, 'error');
+    }
+  };
+
   return (
     <form onSubmit={handleSend} className="py-4 space-y-3">
-      <p className="text-xs text-app-secondary">Sign in to enable cloud sync (coming soon).</p>
+      <p className="text-xs text-app-secondary">
+        Sign in to enable cloud sync (coming soon). Google is recommended; email magic link is fallback.
+      </p>
+      <Button type="button" variant="primary" size="sm" onClick={handleGoogleSignIn}>
+        Continue with Google
+      </Button>
       <input
         type="email"
         value={email}
