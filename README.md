@@ -1,4 +1,4 @@
-# Flashcard App — Phase A
+# Flashcard App — Phase B
 
 A production-ready flashcard web app built with React, Vite, TypeScript, Dexie.js, and Tailwind CSS.
 All data is stored locally in IndexedDB — there is no backend.
@@ -190,26 +190,91 @@ Stored under key `flashcard_settings`. Schema:
 
 ---
 
+## PWA — Progressive Web App (Phase B)
+
+### How it works
+
+The app is a fully installable PWA powered by `vite-plugin-pwa` (Workbox under the hood).
+
+| Layer | Behaviour |
+|---|---|
+| **Precache** | All JS, CSS, HTML and icon assets are precached on first load via the generated service worker |
+| **Navigation fallback** | Any deep route (`/pack/:id`, `/review/:id`, etc.) served offline returns `index.html` — React Router handles the route client-side |
+| **Static assets (cache-first)** | Build artifacts served from the precache; never stale because Workbox uses content-hash filenames |
+| **Google Fonts** | Font CSS: stale-while-revalidate. Font files: cache-first with 1-year TTL (versioned URLs) |
+| **Supabase API / auth** | **NetworkOnly** — auth tokens and sync responses are never cached. Stale auth state could silently break sync |
+
+### Icons
+
+Icons live in `src/public/icons/` (configured as Vite's `publicDir`):
+
+| File | Usage |
+|---|---|
+| `favicon.png` | Browser tab |
+| `Flashcard Icon - 128.png` | Small contexts |
+| `Flashcard Icon - 512.png` | Install icon / splash |
+| `Flashcard Icon maskable - 512.png` | Android adaptive icon |
+
+> **Note:** A 192 × 192 icon is recommended by the PWA spec but not currently in the assets. Chrome will downscale the 512 icon; installability is unaffected in practice. Add a 192 px variant to `src/public/icons/` and the manifest if you want pixel-perfect small icons.
+
+### Testing installability
+
+1. `npm run build && npm run preview`
+2. Open `http://localhost:4173` in Chrome
+3. Open DevTools → **Application** → **Manifest** — verify name, icons, and `display: standalone`
+4. Open **Application** → **Service Workers** — verify the SW is registered
+5. The browser address bar should show an install icon (⊕) after a few seconds
+6. Click it or use the "Install app" banner that appears at the bottom of the page
+
+### Testing offline behaviour
+
+1. After first visit, open DevTools → **Network** → set throttle to **Offline**
+2. Refresh — the app shell should load from the SW cache
+3. Navigate to a deep route (e.g. `/settings`) and refresh — should still load
+4. Create / edit a flashcard while offline — Dexie writes to IndexedDB immediately
+5. Go back online — if logged in, `SyncContext` fires automatically
+
+### SPA routing on the host
+
+`vercel.json` contains a catch-all rewrite to `index.html`. This ensures deep-link refreshes work when the service worker is not yet active (e.g. first visit, or after a hard refresh that bypasses the SW).
+
+### Install / update / offline UX
+
+| Prompt | When it appears |
+|---|---|
+| **Install app** banner | `beforeinstallprompt` fires and the app is not already in standalone mode |
+| **Update available** banner | A new service worker is waiting; user clicks Reload to apply |
+| **Offline** strip | User is offline **and** Supabase sync is configured — indicates changes will sync on reconnect |
+
+All prompts can be dismissed. The offline strip disappears automatically when the connection returns.
+
+### Limitations
+
+- iOS Safari does not fire `beforeinstallprompt`; users must use the Share → "Add to Home Screen" flow manually.
+- The offline indicator is suppressed in local-only mode (no Supabase env vars) since being offline has no effect on data persistence.
+- A `192×192` icon is absent from the asset set; add one for best cross-platform results.
+
+---
+
 ## Intentionally deferred to Phase B
 
 The following are **explicitly not implemented** and should be added without
 structural rewrites:
 
-| Feature                     | Reason deferred                                      |
+| Feature                     | Status                                               |
 |-----------------------------|------------------------------------------------------|
-| PWA manifest                | Phase B — after core is stable                       |
-| Service worker / offline    | Phase B — vite-plugin-pwa slot is ready              |
-| Install prompt              | Phase B                                              |
-| Swipe gestures              | Phase B — setting is stored, hook is the entry point |
-| Study reminder notifications| Phase B — setting is stored                          |
+| PWA manifest                | ✅ Done — Phase B                                    |
+| Service worker / offline    | ✅ Done — Phase B                                    |
+| Install prompt              | ✅ Done — Phase B                                    |
+| Mobile-specific UI passes   | ✅ Done — Phase B (safe-area, touch targets)         |
+| Swipe gestures              | Phase C — setting is stored, hook is the entry point |
+| Study reminder notifications| Phase C — setting is stored                          |
 | SM-2 spaced repetition      | Phase C — stats table designed to support it         |
 | Tags / categorisation       | Phase C                                              |
 | Images in cards             | Phase C                                              |
-| Auth / Supabase sync        | Phase C — data model is portable                     |
 | Shared / published decks    | Phase C                                              |
-| Onboarding flow             | Phase B polish                                       |
+| Onboarding flow             | Phase C                                              |
 | Usage analytics             | Phase C                                              |
-| Mobile-specific UI passes   | Phase B                                              |
 
 ---
 

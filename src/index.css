@@ -27,6 +27,8 @@
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
     scroll-behavior: smooth;
+    /* Ensure content fills the full viewport including notch areas */
+    height: 100%;
   }
 
   body {
@@ -173,6 +175,18 @@
   @media (prefers-reduced-motion: reduce) {
     .review-card-settle {
       animation: none;
+    }
+  }
+
+  /* Safe-area spacing for iOS standalone / notch devices */
+  .pt-safe-top    { padding-top:    env(safe-area-inset-top, 0px); }
+  .pb-safe-bottom { padding-bottom: env(safe-area-inset-bottom, 0px); }
+  .bottom-safe-bottom { bottom: env(safe-area-inset-bottom, 0px); }
+
+  /* Ensure the install/update/offline banners clear the home indicator on iPhone */
+  @supports (padding-bottom: env(safe-area-inset-bottom)) {
+    .bottom-safe-bottom {
+      bottom: env(safe-area-inset-bottom);
     }
   }
 }
