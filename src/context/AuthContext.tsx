@@ -14,6 +14,7 @@ interface AuthContextValue {
   isLoading: boolean;
   isLocalOnly: boolean;
   signIn: (email: string) => Promise<{ error: string | null }>;
+  signInWithGoogle: () => Promise<{ error: string | null }>;
   signOut: () => Promise<void>;
 }
 
@@ -51,13 +52,24 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return { error: error?.message ?? null };
   }, []);
 
+  const signInWithGoogle = useCallback(async (): Promise<{ error: string | null }> => {
+    if (!supabase) return { error: 'Supabase not configured' };
+
+    const { error } = await supabase.auth.signInWithOAuth({
+      provider: 'google',
+      options: { redirectTo: window.location.origin },
+    });
+
+    return { error: error?.message ?? null };
+  }, []);
+
   const signOut = useCallback(async () => {
     if (!supabase) return;
     await supabase.auth.signOut();
   }, []);
 
   return (
-    <AuthContext.Provider value={{ user, isLoading, isLocalOnly, signIn, signOut }}>
+    <AuthContext.Provider value={{ user, isLoading, isLocalOnly, signIn, signInWithGoogle, signOut }}>
       {children}
     </AuthContext.Provider>
   );
