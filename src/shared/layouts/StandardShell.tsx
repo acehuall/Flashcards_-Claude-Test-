@@ -1,8 +1,11 @@
 import React from 'react';
-import { Link, NavLink, useLocation } from 'react-router-dom';
+import { Link, NavLink } from 'react-router-dom';
+import clsx from 'clsx';
 import { ToastContainer } from '../components/Toast';
 import { SyncStatusBadge } from '../components/SyncStatusBadge';
-import clsx from 'clsx';
+import { PWAPrompts } from '../components/PWAPrompts';
+import { useAuth } from '../../context/AuthContext';
+import { useSync } from '../../context/SyncContext';
 
 const navItems = [
   {
@@ -33,10 +36,16 @@ interface StandardShellProps {
 }
 
 export function StandardShell({ children }: StandardShellProps) {
+  const { user, isLocalOnly } = useAuth();
+  const { status } = useSync();
+
+  // Show the offline banner only when sync matters — i.e. Supabase is wired up and someone is signed in
+  const showOfflineBanner = !isLocalOnly && !!user && status === 'offline';
+
   return (
     <div className="min-h-screen bg-app-bg flex flex-col">
-      {/* Top bar */}
-      <header className="sticky top-0 z-40 bg-app-bg-alt/85 backdrop-blur-md border-b border-app-border">
+      {/* Top bar — padded for safe-area on iOS notch devices */}
+      <header className="sticky top-0 z-40 bg-app-bg-alt/85 backdrop-blur-md border-b border-app-border pt-safe-top">
         <div className="max-w-5xl mx-auto px-6 h-14 flex items-center justify-between">
           <Link
             to="/"
@@ -72,13 +81,16 @@ export function StandardShell({ children }: StandardShellProps) {
         </div>
       </header>
 
-      {/* Main content */}
-      <main className="flex-1 max-w-5xl w-full mx-auto px-6 py-8">
+      {/* Main content — bottom padding ensures banners don't obscure content */}
+      <main className="flex-1 max-w-5xl w-full mx-auto px-6 py-8 pb-safe-bottom">
         {children}
       </main>
 
       {/* Toast host */}
       <ToastContainer />
+
+      {/* PWA: install prompt, update prompt, offline banner */}
+      <PWAPrompts showOfflineBanner={showOfflineBanner} />
     </div>
   );
 }
