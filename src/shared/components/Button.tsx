@@ -12,13 +12,13 @@ interface ButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {
 }
 
 const variantClasses: Record<Variant, string> = {
-  primary:   'bg-app-nav text-app-primary hover:bg-app-nav-dark active:scale-95',
-  secondary: 'bg-app-surface text-app-primary border border-app-border hover:bg-app-card-a hover:border-app-nav/50 active:scale-95',
-  ghost:     'bg-transparent text-app-secondary hover:text-app-primary hover:bg-app-surface/90 active:scale-95',
+  primary:   'bg-app-nav text-app-accent-ink hover:bg-app-nav-dark active:scale-95',
+  secondary: 'bg-app-surface text-app-primary border border-app-border hover:bg-app-surface-2 hover:border-app-border-strong active:scale-95',
+  ghost:     'bg-transparent text-app-secondary hover:text-app-primary hover:bg-app-surface-2/80 active:scale-95',
   danger:    'bg-app-incorrect text-app-primary hover:brightness-110 active:scale-95',
   correct:   'bg-app-correct text-app-primary hover:brightness-110 active:scale-95',
   incorrect: 'bg-app-incorrect text-app-primary hover:brightness-110 active:scale-95',
-  flag:      'bg-app-flag text-app-bg-alt hover:brightness-105 active:scale-95',
+  flag:      'bg-app-flag text-app-primary hover:brightness-105 active:scale-95',
 };
 
 const sizeClasses: Record<Size, string> = {
@@ -43,7 +43,7 @@ export function Button({
       disabled={disabled || loading}
       className={clsx(
         'inline-flex items-center justify-center gap-2 rounded-pill font-medium',
-        'transition-all duration-150 focus:outline-none focus-visible:ring-2 focus-visible:ring-app-nav focus-visible:ring-offset-2 focus-visible:ring-offset-app-bg',
+        'transition-all duration-150 focus:outline-none focus-visible:ring-2 focus-visible:ring-app-nav-dark focus-visible:ring-offset-2 focus-visible:ring-offset-app-bg',
         'disabled:opacity-50 disabled:cursor-not-allowed disabled:active:scale-100',
         variantClasses[variant],
         sizeClasses[size],

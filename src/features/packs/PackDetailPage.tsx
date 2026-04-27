@@ -216,7 +216,7 @@ export function PackDetailPage() {
             return (
               <div
                 key={set.id}
-                className="group relative flex items-center bg-app-surface border border-app-border rounded-card px-5 py-4 hover:border-app-secondary/50 transition-all cursor-pointer"
+                className="group relative flex cursor-pointer items-center rounded-card border border-app-border bg-app-surface px-5 py-4 transition-colors hover:border-app-border-strong hover:bg-app-surface-2/40"
                 onClick={() => navigate(`/set/${set.id}`)}
               >
                 <div className="flex-1 min-w-0">
@@ -242,7 +242,7 @@ export function PackDetailPage() {
                       e.stopPropagation();
                       setDeleteTarget({ id: set.id!, title: set.title });
                     }}
-                    className="opacity-0 group-hover:opacity-100 p-1.5 text-app-secondary hover:text-app-incorrect rounded-md hover:bg-app-bg transition-all"
+                    className="rounded-md p-1.5 text-app-secondary opacity-0 transition-all hover:bg-app-surface-2 hover:text-app-incorrect group-hover:opacity-100"
                     aria-label={`Delete set ${set.title}`}
                   >
                     <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">

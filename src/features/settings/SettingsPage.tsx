@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { StandardShell } from '../../shared/layouts/StandardShell';
 import { PageHeader } from '../../shared/components/StateViews';
 import { Button } from '../../shared/components/Button';
@@ -6,6 +6,15 @@ import { useSettings } from '../../context/SettingsContext';
 import { useToast } from '../../context/ToastContext';
 import { useAuth } from '../../context/AuthContext';
 import { useSync } from '../../context/SyncContext';
+import type { BaseThemeId } from '../../domain/types';
+import { normalizeHex } from '../../theme/colorUtils';
+import {
+  BASE_THEME_LIST,
+  DEFAULT_ACCENT_BY_BASE,
+  DEFAULT_ACCENT_HEX,
+  DEFAULT_BASE_THEME_ID,
+  type BaseThemePreset,
+} from '../../theme/themePresets';
 import clsx from 'clsx';
 
 interface ToggleProps {
@@ -37,7 +46,7 @@ function SettingRow({ checked, onChange, disabled, label, description, badge }: 
         onClick={() => !disabled && onChange(!checked)}
         disabled={disabled}
         className={clsx(
-          'relative w-11 h-6 rounded-full transition-colors duration-200 focus-visible:ring-2 focus-visible:ring-app-nav focus-visible:ring-offset-2 focus-visible:ring-offset-app-bg outline-none shrink-0',
+          'relative h-6 w-11 shrink-0 rounded-full outline-none transition-colors duration-200 focus-visible:ring-2 focus-visible:ring-app-nav-dark focus-visible:ring-offset-2 focus-visible:ring-offset-app-surface',
           checked ? 'bg-app-nav' : 'bg-app-border',
           disabled && 'cursor-not-allowed',
         )}
@@ -71,12 +80,119 @@ function SelectRow({ label, description, value, options, onChange }: SelectRowPr
       <select
         value={value}
         onChange={(e) => onChange(parseInt(e.target.value, 10))}
-        className="bg-app-bg-alt border border-app-border text-app-primary text-sm rounded-lg px-3 py-1.5 focus:outline-none focus:ring-2 focus:ring-app-nav"
+        className="rounded-lg border border-app-border bg-app-bg-alt px-3 py-1.5 text-sm text-app-primary focus:outline-none focus:ring-2 focus:ring-app-nav-dark focus:ring-offset-2 focus:ring-offset-app-surface"
       >
         {options.map((o) => (
           <option key={o.value} value={o.value}>{o.label}</option>
         ))}
       </select>
+    </div>
+  );
+}
+
+function tryNormalizeHex(value: string | undefined): string | null {
+  if (!value) {
+    return null;
+  }
+
+  try {
+    return normalizeHex(value);
+  } catch {
+    return null;
+  }
+}
+
+function resolveAccentHex(value: string | undefined, fallback = DEFAULT_ACCENT_HEX): string {
+  return tryNormalizeHex(value) ?? fallback;
+}
+
+interface ThemeOptionCardProps {
+  theme: BaseThemePreset;
+  selected: boolean;
+  onSelect: (themeId: BaseThemeId) => void;
+}
+
+function ThemeOptionCard({ theme, selected, onSelect }: ThemeOptionCardProps) {
+  const [expanded, setExpanded] = useState(false);
+  const paletteSectionId = `theme-palette-${theme.id}`;
+  const paletteItems = [
+    { label: 'bg', value: theme.bg },
+    { label: 'surface', value: theme.surface },
+    { label: 'surface2', value: theme.surface2 },
+  ] as const;
+
+  return (
+    <div
+      className={clsx(
+        'rounded-card border p-3 text-left transition-all duration-150 focus:outline-none focus-visible:ring-2 focus-visible:ring-app-nav-dark focus-visible:ring-offset-2 focus-visible:ring-offset-app-surface',
+        selected
+          ? 'border-app-nav bg-app-nav/10 ring-1 ring-app-nav/20'
+          : 'border-app-border bg-app-surface-2/55 hover:border-app-border-strong hover:bg-app-surface-2/80',
+      )}
+    >
+      <div className="flex items-center gap-2">
+        <button
+          type="button"
+          role="radio"
+          aria-checked={selected}
+          onClick={() => onSelect(theme.id)}
+          className="flex min-w-0 flex-1 items-center justify-between gap-3 rounded-2xl text-left focus:outline-none focus-visible:ring-2 focus-visible:ring-app-nav-dark focus-visible:ring-offset-2 focus-visible:ring-offset-app-surface"
+        >
+          <span className="flex min-w-0 items-center gap-3">
+            <span
+              className="h-8 w-8 shrink-0 rounded-full border"
+              style={{
+                backgroundColor: theme.bg,
+                borderColor: theme.border2,
+              }}
+              aria-hidden="true"
+            />
+            <span className="truncate text-sm font-medium text-app-primary">{theme.name}</span>
+          </span>
+          {selected && (
+            <span className="shrink-0 rounded-full bg-app-nav px-2 py-0.5 text-[11px] font-semibold text-app-accent-ink">
+              Selected
+            </span>
+          )}
+        </button>
+
+        <button
+          type="button"
+          aria-expanded={expanded}
+          aria-controls={paletteSectionId}
+          aria-label={expanded ? `Hide ${theme.name} palette` : `Show ${theme.name} palette`}
+          onClick={() => setExpanded((value) => !value)}
+          className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-app-border bg-app-surface-2/70 text-app-secondary transition-colors hover:border-app-border-strong hover:text-app-primary focus:outline-none focus-visible:ring-2 focus-visible:ring-app-nav-dark focus-visible:ring-offset-2 focus-visible:ring-offset-app-surface"
+        >
+          <svg
+            viewBox="0 0 20 20"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="1.75"
+            className={clsx('h-4 w-4 transition-transform', expanded && 'rotate-180')}
+            aria-hidden="true"
+          >
+            <path strokeLinecap="round" strokeLinejoin="round" d="m5 7.5 5 5 5-5" />
+          </svg>
+        </button>
+      </div>
+
+      {expanded && (
+        <div id={paletteSectionId} className="mt-3 grid grid-cols-3 gap-2 border-t border-app-border pt-3">
+          {paletteItems.map((item) => (
+            <div key={item.label} className="space-y-1.5">
+              <div
+                className="h-8 rounded-xl border"
+                style={{
+                  backgroundColor: item.value,
+                  borderColor: theme.border2,
+                }}
+              />
+              <p className="text-[11px] uppercase tracking-wide text-app-secondary">{item.label}</p>
+            </div>
+          ))}
+        </div>
+      )}
     </div>
   );
 }
@@ -189,7 +305,7 @@ function CloudSyncSection() {
         onChange={(e) => setEmail(e.target.value)}
         placeholder="your@email.com"
         required
-        className="w-full bg-app-bg-alt border border-app-border text-app-primary text-sm rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-app-nav"
+        className="w-full rounded-lg border border-app-border bg-app-bg-alt px-3 py-2 text-sm text-app-primary focus:outline-none focus:ring-2 focus:ring-app-nav-dark focus:ring-offset-2 focus:ring-offset-app-surface"
       />
       <Button type="submit" variant="primary" size="sm" disabled={isSending}>
         {isSending ? 'Sending…' : 'Send magic link'}
@@ -201,6 +317,69 @@ function CloudSyncSection() {
 export function SettingsPage() {
   const { settings, updateSettings, resetSettings } = useSettings();
   const { addToast } = useToast();
+  const currentBaseThemeId =
+    BASE_THEME_LIST.find((theme) => theme.id === settings.baseThemeId)?.id ?? DEFAULT_BASE_THEME_ID;
+  const currentAccentHex = resolveAccentHex(settings.accentHex);
+  const [accentDraft, setAccentDraft] = useState(currentAccentHex);
+
+  useEffect(() => {
+    setAccentDraft(currentAccentHex);
+  }, [currentAccentHex]);
+
+  const commitAccent = (nextAccentHex: string) => {
+    const normalized = tryNormalizeHex(nextAccentHex);
+    if (!normalized) {
+      return;
+    }
+
+    updateSettings({
+      accentHex: normalized,
+      accentByBase: {
+        ...(settings.accentByBase ?? {}),
+        [currentBaseThemeId]: normalized,
+      },
+    });
+  };
+
+  const handleBaseThemeSelect = (nextBaseThemeId: BaseThemeId) => {
+    if (nextBaseThemeId === currentBaseThemeId) {
+      return;
+    }
+
+    const nextAccentByBase = {
+      ...(settings.accentByBase ?? {}),
+      [currentBaseThemeId]: currentAccentHex,
+    };
+    const restoredAccent = resolveAccentHex(nextAccentByBase[nextBaseThemeId], currentAccentHex);
+
+    updateSettings({
+      baseThemeId: nextBaseThemeId,
+      accentHex: restoredAccent,
+      accentByBase: {
+        ...nextAccentByBase,
+        [nextBaseThemeId]: restoredAccent,
+      },
+    });
+  };
+
+  const handleAccentTextChange = (value: string) => {
+    const nextDraft = value.toUpperCase();
+    setAccentDraft(nextDraft);
+
+    const normalized = tryNormalizeHex(nextDraft);
+    if (normalized) {
+      commitAccent(normalized);
+    }
+  };
+
+  const handleAppearanceReset = () => {
+    updateSettings({
+      baseThemeId: DEFAULT_BASE_THEME_ID,
+      accentHex: DEFAULT_ACCENT_HEX,
+      accentByBase: { ...DEFAULT_ACCENT_BY_BASE },
+    });
+    addToast('Appearance reset to defaults', 'info');
+  };
 
   const handleReset = () => {
     resetSettings();
@@ -211,6 +390,90 @@ export function SettingsPage() {
     <StandardShell>
       <div className="max-w-lg">
         <PageHeader title="Settings" subtitle="App preferences and study configuration" />
+
+        {/* Appearance section */}
+        <section className="mb-6">
+          <div className="mb-1 flex items-center justify-between gap-3 px-1">
+            <h2 className="text-xs font-semibold uppercase tracking-widest text-app-secondary">
+              Appearance
+            </h2>
+            <Button variant="ghost" size="sm" onClick={handleAppearanceReset}>
+              Reset appearance
+            </Button>
+          </div>
+          <div className="rounded-card border border-app-border bg-app-surface px-5 py-5">
+            <div className="space-y-5">
+              <div>
+                <div className="flex items-start justify-between gap-3">
+                  <div>
+                    <p className="text-sm font-medium text-app-primary">Base theme</p>
+                    <p className="mt-0.5 text-xs text-app-secondary">
+                      Pick one of the five preset palettes for the app foundation.
+                    </p>
+                  </div>
+                </div>
+
+                <div role="radiogroup" aria-label="Base theme" className="mt-4 grid gap-3 sm:grid-cols-2">
+                  {BASE_THEME_LIST.map((theme) => (
+                    <ThemeOptionCard
+                      key={theme.id}
+                      theme={theme}
+                      selected={theme.id === currentBaseThemeId}
+                      onSelect={handleBaseThemeSelect}
+                    />
+                  ))}
+                </div>
+              </div>
+
+              <div className="border-t border-app-border pt-5">
+                <p className="text-sm font-medium text-app-primary">Accent colour</p>
+                <p className="mt-0.5 text-xs text-app-secondary">
+                  Choose any accent. Accent changes are saved per base theme.
+                </p>
+
+                <div className="mt-4 flex flex-col gap-3 sm:flex-row sm:items-center">
+                  <label className="flex items-center gap-3 rounded-xl border border-app-border-strong/70 bg-app-surface-2/75 px-3 py-2">
+                    <span className="sr-only">Accent colour picker</span>
+                    <input
+                      type="color"
+                      value={currentAccentHex}
+                      onChange={(e) => {
+                        const nextHex = e.target.value;
+                        setAccentDraft(resolveAccentHex(nextHex));
+                        commitAccent(nextHex);
+                      }}
+                      className="h-9 w-11 cursor-pointer rounded-lg border-0 bg-transparent p-0"
+                    />
+                    <span
+                      className="h-6 w-6 rounded-full border border-app-border-strong/70"
+                      style={{ backgroundColor: currentAccentHex }}
+                      aria-hidden="true"
+                    />
+                  </label>
+
+                  <label className="flex-1">
+                    <span className="mb-1 block text-xs font-medium uppercase tracking-wide text-app-secondary">
+                      Hex
+                    </span>
+                    <input
+                      type="text"
+                      inputMode="text"
+                      autoCapitalize="characters"
+                      autoCorrect="off"
+                      spellCheck={false}
+                      maxLength={7}
+                      value={accentDraft}
+                      onChange={(e) => handleAccentTextChange(e.target.value)}
+                      onBlur={() => setAccentDraft(currentAccentHex)}
+                      placeholder={DEFAULT_ACCENT_HEX}
+                        className="w-full rounded-lg border border-app-border bg-app-bg-alt px-3 py-2 text-sm text-app-primary focus:outline-none focus:ring-2 focus:ring-app-nav-dark focus:ring-offset-2 focus:ring-offset-app-surface"
+                      />
+                    </label>
+                </div>
+              </div>
+            </div>
+          </div>
+        </section>
 
         {/* Review section */}
         <section className="mb-6">

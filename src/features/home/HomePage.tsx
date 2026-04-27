@@ -295,11 +295,11 @@ export function HomePage() {
             const colorStyle = getPackColorStyle(pack.color);
             const count = setCounts?.[pack.id!] ?? 0;
             return (
-              <div
-                key={pack.id}
-                className="group relative bg-app-surface border border-app-border rounded-card p-5 hover:border-app-secondary/50 transition-all duration-200 cursor-pointer animate-fade-in"
-                onClick={() => navigate(`/pack/${pack.id}`)}
-              >
+                <div
+                  key={pack.id}
+                  className="group relative cursor-pointer rounded-card border border-app-border bg-app-surface p-5 transition-colors duration-200 animate-fade-in hover:border-app-border-strong hover:bg-app-surface-2/40"
+                  onClick={() => navigate(`/pack/${pack.id}`)}
+                >
                 {/* Colour indicator */}
                 <div
                   className="w-10 h-10 rounded-lg flex items-center justify-center mb-4 text-lg font-bold"
@@ -322,7 +322,7 @@ export function HomePage() {
                       e.stopPropagation();
                       setDeleteTarget({ id: pack.id!, name: pack.name });
                     }}
-                    className="p-1.5 text-app-secondary hover:text-app-incorrect rounded-md hover:bg-app-bg transition-colors"
+                    className="rounded-md p-1.5 text-app-secondary transition-colors hover:bg-app-surface-2 hover:text-app-incorrect"
                     aria-label={`Delete pack ${pack.name}`}
                   >
                     <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">

@@ -99,7 +99,7 @@ export function SyncStatusBadge() {
       title={config.title}
       className={clsx(
         'flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg text-xs transition-colors',
-        'hover:bg-app-surface/90 disabled:cursor-default',
+        'hover:bg-app-surface-2/80 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-app-nav-dark focus-visible:ring-offset-2 focus-visible:ring-offset-app-bg-alt disabled:cursor-default',
         config.colorClass,
       )}
     >

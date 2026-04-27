@@ -40,7 +40,7 @@ export const Input = forwardRef<HTMLInputElement, InputProps>(
       className={clsx(
         'w-full px-3 py-2 rounded-lg text-sm text-app-primary',
         'bg-app-bg-alt border transition-colors',
-        'focus:outline-none focus:ring-2 focus:ring-app-nav focus:border-transparent',
+        'focus:outline-none focus:ring-2 focus:ring-app-nav-dark focus:ring-offset-2 focus:ring-offset-app-surface focus:border-transparent',
         'placeholder:text-app-secondary/50',
         error
           ? 'border-app-incorrect'
@@ -64,7 +64,7 @@ export const Textarea = forwardRef<HTMLTextAreaElement, TextareaProps>(
       className={clsx(
         'w-full px-3 py-2 rounded-lg text-sm text-app-primary',
         'bg-app-bg-alt border transition-colors resize-y min-h-[80px]',
-        'focus:outline-none focus:ring-2 focus:ring-app-nav focus:border-transparent',
+        'focus:outline-none focus:ring-2 focus:ring-app-nav-dark focus:ring-offset-2 focus:ring-offset-app-surface focus:border-transparent',
         'placeholder:text-app-secondary/50',
         error
           ? 'border-app-incorrect'
@@ -89,7 +89,7 @@ export const Select = forwardRef<HTMLSelectElement, SelectProps>(
       className={clsx(
         'w-full px-3 py-2 rounded-lg text-sm text-app-primary',
         'bg-app-bg-alt border transition-colors',
-        'focus:outline-none focus:ring-2 focus:ring-app-nav focus:border-transparent',
+        'focus:outline-none focus:ring-2 focus:ring-app-nav-dark focus:ring-offset-2 focus:ring-offset-app-surface focus:border-transparent',
         error
           ? 'border-app-incorrect'
           : 'border-app-border hover:border-app-nav/55',

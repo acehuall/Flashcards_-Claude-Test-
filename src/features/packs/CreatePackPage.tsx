@@ -79,9 +79,9 @@ export function CreatePackPage() {
                   type="button"
                   onClick={() => setValue('color', color)}
                   className={clsx(
-                    'w-8 h-8 rounded-full transition-all duration-150 focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-offset-app-surface outline-none',
+                    'h-8 w-8 rounded-full transition-all duration-150 outline-none focus-visible:ring-2 focus-visible:ring-app-nav-dark focus-visible:ring-offset-2 focus-visible:ring-offset-app-surface',
                     selectedColor === color
-                      ? 'ring-2 ring-white ring-offset-2 ring-offset-app-surface scale-110'
+                      ? 'scale-110 ring-2 ring-app-primary ring-offset-2 ring-offset-app-surface shadow-[0_0_0_1px_rgb(var(--app-border-strong))]'
                       : 'hover:scale-105',
                   )}
                   style={{ backgroundColor: color }}

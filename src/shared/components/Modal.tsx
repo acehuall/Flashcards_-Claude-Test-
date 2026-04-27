@@ -41,7 +41,7 @@ export function Modal({ open, onClose, title, children, maxWidth = 'md' }: Modal
     >
       {/* Backdrop */}
       <div
-        className="absolute inset-0 bg-app-bg-alt/80 backdrop-blur-sm animate-fade-in"
+        className="app-modal-backdrop absolute inset-0 animate-fade-in"
         onClick={onClose}
         aria-hidden="true"
       />
@@ -50,8 +50,8 @@ export function Modal({ open, onClose, title, children, maxWidth = 'md' }: Modal
         ref={dialogRef}
         tabIndex={-1}
         className={clsx(
-          'relative z-10 w-full bg-app-surface border border-app-border rounded-card',
-          'shadow-2xl shadow-black/50 animate-slide-up focus:outline-none',
+          'app-elevated-panel relative z-10 w-full rounded-card border border-app-border-strong/70 bg-app-surface',
+          'animate-slide-up focus:outline-none',
           widthMap[maxWidth],
         )}
       >
@@ -62,7 +62,7 @@ export function Modal({ open, onClose, title, children, maxWidth = 'md' }: Modal
             </h2>
             <button
               onClick={onClose}
-              className="text-app-secondary hover:text-app-primary transition-colors p-1 rounded-md focus-visible:ring-2 focus-visible:ring-app-nav outline-none"
+              className="rounded-md p-1 text-app-secondary transition-colors hover:bg-app-surface-2/70 hover:text-app-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-app-nav-dark focus-visible:ring-offset-2 focus-visible:ring-offset-app-surface"
               aria-label="Close"
             >
               <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -102,17 +102,17 @@ export function ConfirmModal({
       <div className="flex justify-end gap-3">
         <button
           onClick={onCancel}
-          className="px-4 py-2 text-sm text-app-secondary hover:text-app-primary bg-app-bg-alt border border-app-border rounded-pill transition-colors"
+          className="px-4 py-2 text-sm text-app-secondary hover:text-app-primary bg-app-bg-alt border border-app-border rounded-pill transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-app-nav-dark focus-visible:ring-offset-2 focus-visible:ring-offset-app-surface"
         >
           Cancel
         </button>
         <button
           onClick={onConfirm}
           className={clsx(
-            'px-4 py-2 text-sm font-medium rounded-pill transition-colors',
+            'px-4 py-2 text-sm font-medium rounded-pill transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-app-nav-dark focus-visible:ring-offset-2 focus-visible:ring-offset-app-surface',
             danger
-              ? 'bg-app-incorrect text-white hover:opacity-90'
-              : 'bg-app-nav text-white hover:bg-app-nav-dark',
+              ? 'bg-app-incorrect text-app-primary hover:brightness-105'
+              : 'bg-app-nav text-app-accent-ink hover:bg-app-nav-dark',
           )}
           autoFocus
         >
