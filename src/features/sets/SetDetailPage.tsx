@@ -303,7 +303,7 @@ export function SetDetailPage() {
           {cards.map((card, idx) => (
             <div
               key={card.id}
-              className="group flex items-start gap-4 bg-app-surface border border-app-border rounded-card px-5 py-4 hover:border-app-secondary/40 transition-all"
+              className="group flex items-start gap-4 rounded-card border border-app-border bg-app-surface px-5 py-4 transition-colors hover:border-app-border-strong hover:bg-app-surface-2/35"
             >
               <span className="text-xs text-app-secondary/50 font-mono mt-0.5 w-6 shrink-0 text-right">
                 {idx + 1}
@@ -321,7 +321,7 @@ export function SetDetailPage() {
               <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity shrink-0">
                 <button
                   onClick={() => navigate(`/edit/card/${card.id}`)}
-                  className="p-1.5 text-app-secondary hover:text-app-primary rounded-md hover:bg-app-bg transition-colors"
+                  className="rounded-md p-1.5 text-app-secondary transition-colors hover:bg-app-surface-2 hover:text-app-primary"
                   aria-label="Edit card"
                 >
                   <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -331,7 +331,7 @@ export function SetDetailPage() {
                 </button>
                 <button
                   onClick={() => setDeleteTarget({ id: card.id!, question: card.question })}
-                  className="p-1.5 text-app-secondary hover:text-app-incorrect rounded-md hover:bg-app-bg transition-colors"
+                  className="rounded-md p-1.5 text-app-secondary transition-colors hover:bg-app-surface-2 hover:text-app-incorrect"
                   aria-label="Delete card"
                 >
                   <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">

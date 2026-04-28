@@ -105,7 +105,7 @@ function ToggleRow({ label, description, checked, onChange, disabled = false }: 
         checked={checked}
         onChange={onChange}
         disabled={disabled}
-        className="mt-1 h-4 w-4 rounded border-app-border bg-app-bg-alt text-app-nav focus:ring-app-nav"
+        className="mt-1 h-4 w-4 rounded border-app-border bg-app-bg-alt text-app-nav focus:ring-2 focus:ring-app-nav-dark focus:ring-offset-1 focus:ring-offset-app-surface"
       />
     </label>
   );

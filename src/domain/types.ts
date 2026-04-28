@@ -1,3 +1,9 @@
+import {
+  DEFAULT_ACCENT_BY_BASE,
+  DEFAULT_ACCENT_HEX,
+  DEFAULT_BASE_THEME_ID,
+} from '../theme/themePresets';
+
 // ─── Core Entity Types ────────────────────────────────────────────────────────
 
 export type SyncStatus = 'pending' | 'synced';
@@ -98,12 +104,17 @@ export interface ActiveSession {
 
 // ─── App Settings ─────────────────────────────────────────────────────────────
 
+export type BaseThemeId = 'graphite' | 'midnight' | 'ivory' | 'forest' | 'crimson';
+
 export interface AppSettings {
   shuffleCards: boolean;
   flipAnimation: boolean;
   autoShowAnswer: 0 | 3 | 5 | 10;
   swipeGestures: boolean;    // stored but not implemented in Phase A
   studyReminders: boolean;   // stored but not implemented in Phase A
+  baseThemeId: BaseThemeId;
+  accentHex: string;
+  accentByBase?: Partial<Record<BaseThemeId, string>>;
 }
 
 export const DEFAULT_SETTINGS: AppSettings = {
@@ -112,6 +123,9 @@ export const DEFAULT_SETTINGS: AppSettings = {
   autoShowAnswer: 0,
   swipeGestures: true,
   studyReminders: false,
+  baseThemeId: DEFAULT_BASE_THEME_ID,
+  accentHex: DEFAULT_ACCENT_HEX,
+  accentByBase: { ...DEFAULT_ACCENT_BY_BASE },
 };
 
 // ─── CSV ──────────────────────────────────────────────────────────────────────

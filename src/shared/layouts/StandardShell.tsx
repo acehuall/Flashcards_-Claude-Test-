@@ -45,14 +45,14 @@ export function StandardShell({ children }: StandardShellProps) {
   return (
     <div className="min-h-screen bg-app-bg flex flex-col">
       {/* Top bar — padded for safe-area on iOS notch devices */}
-      <header className="sticky top-0 z-40 bg-app-bg-alt/85 backdrop-blur-md border-b border-app-border pt-safe-top">
+      <header className="sticky top-0 z-40 border-b border-app-border-strong/75 bg-app-bg-alt/88 backdrop-blur-md pt-safe-top">
         <div className="max-w-5xl mx-auto px-6 h-14 flex items-center justify-between">
           <Link
             to="/"
             className="flex items-center gap-2 text-app-primary font-bold text-lg hover:opacity-80 transition-opacity"
           >
-            <span className="w-7 h-7 rounded-lg bg-app-nav flex items-center justify-center text-white text-xs font-bold">
-              F
+            <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border border-app-border bg-app-primary/5">
+              <img src="/icons/Icon-128.png" alt="" className="h-5 w-5 object-contain" aria-hidden="true" />
             </span>
             <span>Flashcards</span>
           </Link>
@@ -66,10 +66,10 @@ export function StandardShell({ children }: StandardShellProps) {
                 end={item.to === '/'}
                 className={({ isActive }) =>
                   clsx(
-                    'flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm transition-colors',
+                    'flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-app-nav-dark focus-visible:ring-offset-2 focus-visible:ring-offset-app-bg-alt',
                     isActive
-                      ? 'bg-app-nav text-app-primary shadow-[0_0_0_1px_rgb(var(--app-nav-dark))_inset]'
-                      : 'text-app-secondary hover:text-app-primary hover:bg-app-surface/90',
+                      ? 'bg-app-nav text-app-accent-ink shadow-[0_0_0_1px_rgb(var(--app-nav-dark))_inset]'
+                      : 'text-app-secondary hover:bg-app-surface-2/80 hover:text-app-primary',
                   )
                 }
               >

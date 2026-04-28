@@ -430,7 +430,7 @@ function Filmstrip({ cards, activeIndex, outcomes, onSelect, disabled = false }:
                   type="button"
                   onClick={() => onSelect(index)}
                   disabled={disabled}
-                  className="relative shrink-0 rounded-full transition-[opacity,transform,background-color] duration-150 ease-out focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-app-nav/50"
+                  className="relative shrink-0 rounded-full transition-[opacity,transform,background-color] duration-150 ease-out focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-app-nav-dark focus-visible:ring-offset-1 focus-visible:ring-offset-app-bg"
                   style={{
                     width: `${SCRUBBER_BAR_WIDTH}px`,
                     height: `${SCRUBBER_BAR_HEIGHT}px`,
@@ -839,12 +839,12 @@ export function ReviewPage({ mode = 'full', seedCardIds }: { mode?: SessionMode;
             {/* Actions */}
             <div className="flex items-center justify-center gap-4 pb-4">
               {/* Back arrow */}
-              <button
-                onClick={() => dispatch({ type: 'NAVIGATE_PREV' })}
-                disabled={interactionLocked || state.currentIndex === 0}
-                className="w-11 h-11 rounded-full bg-app-surface border border-app-border flex items-center justify-center text-app-secondary hover:text-app-primary hover:border-app-secondary disabled:opacity-30 disabled:cursor-not-allowed transition-all"
-                aria-label="Previous card"
-              >
+                <button
+                  onClick={() => dispatch({ type: 'NAVIGATE_PREV' })}
+                  disabled={interactionLocked || state.currentIndex === 0}
+                  className="flex h-11 w-11 items-center justify-center rounded-full border border-app-border bg-app-surface text-app-secondary transition-all hover:border-app-border-strong hover:bg-app-surface-2 hover:text-app-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-app-nav-dark focus-visible:ring-offset-2 focus-visible:ring-offset-app-bg disabled:cursor-not-allowed disabled:opacity-30"
+                  aria-label="Previous card"
+                >
                 <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
                 </svg>
@@ -860,7 +860,7 @@ export function ReviewPage({ mode = 'full', seedCardIds }: { mode?: SessionMode;
                 <button
                   onClick={() => resolveOutcomeWithFeedback('incorrect')}
                   disabled={Boolean(buttonFeedback)}
-                  className="flex flex-col items-center gap-1 group"
+                  className="group flex flex-col items-center gap-1 rounded-2xl px-1 py-1 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-app-nav-dark focus-visible:ring-offset-2 focus-visible:ring-offset-app-bg"
                   aria-label="Mark incorrect (key: 1)"
                 >
                   <div className="w-14 h-14 rounded-full bg-app-incorrect/10 border-2 border-app-incorrect/40 flex items-center justify-center text-app-incorrect group-hover:bg-app-incorrect/20 group-hover:border-app-incorrect transition-all active:scale-95">
@@ -874,7 +874,7 @@ export function ReviewPage({ mode = 'full', seedCardIds }: { mode?: SessionMode;
                 <button
                   onClick={() => resolveOutcomeWithFeedback('flagged')}
                   disabled={Boolean(buttonFeedback)}
-                  className="flex flex-col items-center gap-1 group"
+                  className="group flex flex-col items-center gap-1 rounded-2xl px-1 py-1 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-app-nav-dark focus-visible:ring-offset-2 focus-visible:ring-offset-app-bg"
                   aria-label="Flag for review (key: 2)"
                 >
                   <div className="w-12 h-12 rounded-full bg-app-flag/10 border-2 border-app-flag/40 flex items-center justify-center text-app-flag group-hover:bg-app-flag/20 group-hover:border-app-flag transition-all active:scale-95">
@@ -888,7 +888,7 @@ export function ReviewPage({ mode = 'full', seedCardIds }: { mode?: SessionMode;
                 <button
                   onClick={() => resolveOutcomeWithFeedback('correct')}
                   disabled={Boolean(buttonFeedback)}
-                  className="flex flex-col items-center gap-1 group"
+                  className="group flex flex-col items-center gap-1 rounded-2xl px-1 py-1 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-app-nav-dark focus-visible:ring-offset-2 focus-visible:ring-offset-app-bg"
                   aria-label="Mark correct (key: 3)"
                 >
                   <div className="w-14 h-14 rounded-full bg-app-correct/10 border-2 border-app-correct/40 flex items-center justify-center text-app-correct group-hover:bg-app-correct/20 group-hover:border-app-correct transition-all active:scale-95">
@@ -901,12 +901,12 @@ export function ReviewPage({ mode = 'full', seedCardIds }: { mode?: SessionMode;
               </div>
 
               {/* Forward arrow */}
-              <button
-                onClick={() => dispatch({ type: 'NAVIGATE_NEXT' })}
-                disabled={interactionLocked || state.currentIndex >= state.queue.length - 1}
-                className="w-11 h-11 rounded-full bg-app-surface border border-app-border flex items-center justify-center text-app-secondary hover:text-app-primary hover:border-app-secondary disabled:opacity-30 disabled:cursor-not-allowed transition-all"
-                aria-label="Next card"
-              >
+                <button
+                  onClick={() => dispatch({ type: 'NAVIGATE_NEXT' })}
+                  disabled={interactionLocked || state.currentIndex >= state.queue.length - 1}
+                  className="flex h-11 w-11 items-center justify-center rounded-full border border-app-border bg-app-surface text-app-secondary transition-all hover:border-app-border-strong hover:bg-app-surface-2 hover:text-app-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-app-nav-dark focus-visible:ring-offset-2 focus-visible:ring-offset-app-bg disabled:cursor-not-allowed disabled:opacity-30"
+                  aria-label="Next card"
+                >
                 <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
                 </svg>

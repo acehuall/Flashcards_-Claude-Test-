@@ -140,7 +140,7 @@ export function ImportPreviewModal({
               id="import-pack-select"
               value={selectedPackId ?? ''}
               onChange={(event) => onSelectedPackIdChange?.(Number(event.target.value))}
-              className="w-full rounded-card border border-app-border bg-app-bg-alt px-3 py-2 text-sm text-app-primary outline-none transition-colors focus:border-app-nav"
+              className="w-full rounded-card border border-app-border bg-app-bg-alt px-3 py-2 text-sm text-app-primary outline-none transition-colors focus:border-app-nav focus-visible:ring-2 focus-visible:ring-app-nav-dark focus-visible:ring-offset-2 focus-visible:ring-offset-app-surface"
             >
               {(packOptions ?? []).map((pack) => (
                 <option key={pack.id} value={pack.id}>
@@ -281,9 +281,9 @@ export function ImportPreviewModal({
         </div>
 
         {heuristicFile && (
-          <div className="rounded-card border border-amber-500/40 bg-amber-500/10 px-4 py-3 text-sm text-amber-200">
-            <span className="font-semibold uppercase tracking-wide">Heuristic matching warning</span>
-            <p className="mt-1 text-amber-100/90">
+          <div className="rounded-card border border-app-flag/45 bg-app-flag/10 px-4 py-3 text-sm text-app-primary">
+            <span className="font-semibold uppercase tracking-wide text-app-flag">Heuristic matching warning</span>
+            <p className="mt-1 text-app-secondary">
               This file does not carry stable portable IDs for every entity. Fallback matching will rely on names, titles, or normalised card questions.
             </p>
           </div>
@@ -304,13 +304,13 @@ export function ImportPreviewModal({
         )}
 
         {mode !== 'copy' && activeSessions.length > 0 && (
-          <div className="rounded-card border border-amber-500/40 bg-amber-500/10 px-4 py-3 text-sm text-amber-100">
-            <span className="font-semibold uppercase tracking-wide text-amber-200">Active session warning</span>
+          <div className="rounded-card border border-app-flag/45 bg-app-flag/10 px-4 py-3 text-sm text-app-primary">
+            <span className="font-semibold uppercase tracking-wide text-app-flag">Active session warning</span>
             <p className="mt-1">
               {activeSessions.length} destination set{activeSessions.length !== 1 ? 's have' : ' has'} an active session snapshot that may be cleared by this import.
             </p>
             {activeSessions.length <= 5 && (
-              <div className="mt-2 space-y-1 text-xs text-amber-50/90">
+              <div className="mt-2 space-y-1 text-xs text-app-secondary">
                 {activeSessions.map((session) => (
                   <p key={session.setId}>
                     {session.packName ? `${session.packName} / ` : ''}{session.title}
@@ -322,9 +322,9 @@ export function ImportPreviewModal({
         )}
 
         {hasHeuristicConflict && (
-          <div className="rounded-card border border-amber-400/50 bg-amber-400/10 px-4 py-3 text-sm text-amber-100">
-            <span className="font-semibold uppercase tracking-wide text-amber-200">Heuristic matching</span>
-            <p className="mt-1">At least one detected conflict was matched heuristically rather than by portable ID.</p>
+          <div className="rounded-card border border-app-flag/45 bg-app-flag/10 px-4 py-3 text-sm text-app-primary">
+            <span className="font-semibold uppercase tracking-wide text-app-flag">Heuristic matching</span>
+            <p className="mt-1 text-app-secondary">At least one detected conflict was matched heuristically rather than by portable ID.</p>
           </div>
         )}
 
@@ -355,7 +355,7 @@ export function ImportPreviewModal({
                         </span>
                       )}
                       {conflict.matchedBy === 'heuristic' && (
-                        <span className="rounded-pill bg-amber-500/20 px-2 py-1 font-semibold text-amber-200">
+                        <span className="rounded-pill bg-app-flag/15 px-2 py-1 font-semibold text-app-flag">
                           Heuristic match
                         </span>
                       )}
@@ -453,7 +453,7 @@ function ToggleRow({ label, description, checked, onChange, disabled = false }: 
         checked={checked}
         onChange={onChange}
         disabled={disabled}
-        className="mt-1 h-4 w-4 rounded border-app-border bg-app-bg-alt text-app-nav focus:ring-app-nav"
+        className="mt-1 h-4 w-4 rounded border-app-border bg-app-bg-alt text-app-nav focus:ring-2 focus:ring-app-nav-dark focus:ring-offset-1 focus:ring-offset-app-surface"
       />
     </label>
   );
@@ -475,9 +475,9 @@ function ModeOption({ label, description, selected, disabled, badge, onSelect }:
       onClick={onSelect}
       disabled={disabled}
       className={[
-        'rounded-card border px-4 py-3 text-left transition-colors',
-        selected ? 'border-app-nav bg-app-nav/10 text-app-primary' : 'border-app-border bg-app-surface text-app-primary',
-        disabled ? 'cursor-not-allowed opacity-50' : 'hover:border-app-nav/50',
+        'rounded-card border px-4 py-3 text-left transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-app-nav-dark focus-visible:ring-offset-2 focus-visible:ring-offset-app-surface',
+        selected ? 'border-app-nav bg-app-nav/10 text-app-primary ring-1 ring-app-nav-dark/30' : 'border-app-border bg-app-surface-2/45 text-app-primary',
+        disabled ? 'cursor-not-allowed opacity-50' : 'hover:border-app-border-strong hover:bg-app-surface-2/75',
       ].join(' ')}
       aria-pressed={selected}
     >

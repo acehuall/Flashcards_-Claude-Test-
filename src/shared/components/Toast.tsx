@@ -21,9 +21,15 @@ const icons = {
 };
 
 const typeStyles: Record<Toast['type'], string> = {
-  success: 'border-app-correct text-app-correct',
-  error:   'border-app-incorrect text-app-incorrect',
-  info:    'border-app-nav text-app-nav',
+  success: 'border-app-correct/40',
+  error:   'border-app-incorrect/40',
+  info:    'border-app-nav/45',
+};
+
+const iconStyles: Record<Toast['type'], string> = {
+  success: 'text-app-correct',
+  error:   'text-app-incorrect',
+  info:    'text-app-nav-dark',
 };
 
 function ToastItem({ toast }: { toast: Toast }) {
@@ -32,17 +38,17 @@ function ToastItem({ toast }: { toast: Toast }) {
     <div
       role="alert"
       className={clsx(
-        'flex items-start gap-3 px-4 py-3 rounded-card',
-        'bg-app-surface border shadow-xl animate-toast-in',
+        'app-elevated-panel flex items-start gap-3 rounded-card px-4 py-3',
+        'bg-app-surface border animate-toast-in',
         'min-w-[260px] max-w-sm',
         typeStyles[toast.type],
       )}
     >
-      <span className="mt-0.5 shrink-0">{icons[toast.type]}</span>
+      <span className={clsx('mt-0.5 shrink-0', iconStyles[toast.type])}>{icons[toast.type]}</span>
       <p className="text-sm text-app-primary flex-1 leading-snug">{toast.message}</p>
       <button
         onClick={() => removeToast(toast.id)}
-        className="text-app-secondary hover:text-app-primary transition-colors shrink-0"
+        className="shrink-0 rounded-md text-app-secondary transition-colors hover:text-app-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-app-nav-dark focus-visible:ring-offset-2 focus-visible:ring-offset-app-surface"
         aria-label="Dismiss"
       >
         <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">

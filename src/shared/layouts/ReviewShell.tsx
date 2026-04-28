@@ -23,13 +23,13 @@ export function ReviewShell({ children, exitTo, progress }: ReviewShellProps) {
   return (
     <div className="min-h-screen bg-app-bg flex flex-col">
       {/* Top progress bar + controls */}
-      <header className="sticky top-0 z-40 bg-app-bg-alt/85 backdrop-blur-md border-b border-app-border">
+      <header className="sticky top-0 z-40 border-b border-app-border-strong/75 bg-app-bg-alt/88 backdrop-blur-md">
         <div className="max-w-3xl mx-auto px-6 h-14 flex items-center gap-4">
           {/* Exit */}
           {exitTo && (
             <Link
               to={exitTo}
-              className="text-app-secondary hover:text-app-primary transition-colors shrink-0"
+              className="shrink-0 rounded-md p-1.5 text-app-secondary transition-colors hover:bg-app-surface-2/70 hover:text-app-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-app-nav-dark focus-visible:ring-offset-2 focus-visible:ring-offset-app-bg-alt"
               aria-label="Exit review"
             >
               <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">

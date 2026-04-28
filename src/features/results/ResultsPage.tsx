@@ -9,9 +9,9 @@ import { LoadingSpinner, NotFound } from '../../shared/components/StateViews';
 import clsx from 'clsx';
 
 const COLORS = {
-  correct:   '#4CAF50',
-  incorrect: '#F44336',
-  flagged:   '#FFC107',
+  correct:   '#22C55E',
+  incorrect: '#EF4444',
+  flagged:   '#FBBF24',
 };
 
 export function ResultsPage() {
@@ -109,7 +109,7 @@ export function ResultsPage() {
                       innerRadius={46}
                       outerRadius={64}
                       paddingAngle={0}
-                      stroke={hasMultipleSegments ? '#FFFFFF' : 'none'}
+                      stroke={hasMultipleSegments ? 'rgb(var(--app-surface))' : 'none'}
                       strokeWidth={hasMultipleSegments ? 2 : 0}
                       dataKey="value"
                       startAngle={90}

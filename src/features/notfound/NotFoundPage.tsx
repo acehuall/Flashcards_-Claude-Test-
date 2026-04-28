@@ -13,7 +13,7 @@ export function NotFoundPage() {
         </p>
         <Link
           to="/"
-          className="mt-2 px-5 py-2.5 bg-app-nav text-white rounded-pill text-sm font-medium hover:bg-app-nav-dark transition-colors"
+          className="mt-2 px-5 py-2.5 bg-app-nav text-app-accent-ink rounded-pill text-sm font-medium hover:bg-app-nav-dark transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-app-nav-dark focus-visible:ring-offset-2 focus-visible:ring-offset-app-bg"
         >
           Go home
         </Link>

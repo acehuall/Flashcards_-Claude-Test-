@@ -50,8 +50,8 @@ function Banner({ children, colorClass }: BannerProps) {
       className={clsx(
         'fixed bottom-safe-bottom left-0 right-0 z-50',
         'flex items-center gap-3 px-4 py-3',
-        'border-t border-app-border bg-app-surface/95 backdrop-blur-md',
-        'text-sm shadow-xl',
+        'app-elevated-panel border-t border-app-border-strong/75 bg-app-surface/92 backdrop-blur-md',
+        'text-sm',
         colorClass,
       )}
     >
@@ -77,14 +77,14 @@ function InstallBanner({ onInstall, onDismiss }: InstallBannerProps) {
       </p>
       <button
         onClick={onInstall}
-        className="px-3 py-1 rounded-lg bg-app-nav text-white text-xs font-medium hover:opacity-90 transition-opacity shrink-0"
+        className="px-3 py-1 rounded-lg bg-app-nav text-app-accent-ink text-xs font-medium hover:bg-app-nav-dark transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-app-nav-dark focus-visible:ring-offset-2 focus-visible:ring-offset-app-surface shrink-0"
       >
         Install
       </button>
       <button
         onClick={onDismiss}
         aria-label="Dismiss install prompt"
-        className="text-app-secondary hover:text-app-primary transition-colors shrink-0"
+        className="text-app-secondary hover:text-app-primary transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-app-nav-dark focus-visible:ring-offset-2 focus-visible:ring-offset-app-surface shrink-0"
       >
         <XIcon />
       </button>
@@ -109,14 +109,14 @@ function UpdateBanner({ onUpdate, onDismiss }: UpdateBannerProps) {
       </p>
       <button
         onClick={onUpdate}
-        className="px-3 py-1 rounded-lg bg-app-nav text-white text-xs font-medium hover:opacity-90 transition-opacity shrink-0"
+        className="px-3 py-1 rounded-lg bg-app-nav text-app-accent-ink text-xs font-medium hover:bg-app-nav-dark transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-app-nav-dark focus-visible:ring-offset-2 focus-visible:ring-offset-app-surface shrink-0"
       >
         Reload
       </button>
       <button
         onClick={onDismiss}
         aria-label="Dismiss update prompt"
-        className="text-app-secondary hover:text-app-primary transition-colors shrink-0"
+        className="text-app-secondary hover:text-app-primary transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-app-nav-dark focus-visible:ring-offset-2 focus-visible:ring-offset-app-surface shrink-0"
       >
         <XIcon />
       </button>
@@ -134,7 +134,7 @@ function OfflineBanner() {
       className={clsx(
         'fixed top-14 left-0 right-0 z-30',
         'flex items-center justify-center gap-2 px-4 py-1.5',
-        'bg-app-bg-alt/90 backdrop-blur-sm border-b border-app-border',
+        'bg-app-bg-alt/92 backdrop-blur-sm border-b border-app-border-strong/75',
         'text-xs text-app-secondary',
       )}
     >
