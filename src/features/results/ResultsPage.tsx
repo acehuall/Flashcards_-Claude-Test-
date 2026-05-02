@@ -108,9 +108,9 @@ export function ResultsPage() {
                       cy="50%"
                       innerRadius={46}
                       outerRadius={64}
-                      paddingAngle={0}
-                      stroke={hasMultipleSegments ? 'rgb(var(--app-surface))' : 'none'}
-                      strokeWidth={hasMultipleSegments ? 2 : 0}
+                      paddingAngle={hasMultipleSegments ? 1 : 0}
+                      stroke="none"
+                      cornerRadius={hasMultipleSegments ? 3 : 0}
                       dataKey="value"
                       startAngle={90}
                       endAngle={-270}
