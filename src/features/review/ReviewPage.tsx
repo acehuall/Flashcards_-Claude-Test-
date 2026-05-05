@@ -1,7 +1,8 @@
 import React, { useCallback, useEffect, useReducer, useRef, useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { db } from '../../db';
-import { sessionRepo, resultRepo, statsRepo, activeSessionRepo } from '../../db/repositories/sessionRepo';
+import { updateRollupsForCompletedSession } from '../../db/repositories/analyticsRepo';
+import { sessionRepo, activeSessionRepo } from '../../db/repositories/sessionRepo';
 import {
   reviewReducer,
   buildInitialState,
@@ -10,7 +11,7 @@ import {
   getIncorrectCount,
   getFlaggedCount,
 } from '../../domain/reviewEngine';
-import type { ReviewCard, SessionMode, ActiveSessionSnapshot, Outcome } from '../../domain/types';
+import type { ReviewCard, SessionMode, ActiveSessionSnapshot, Outcome, AnswerMethod } from '../../domain/types';
 import { ReviewShell } from '../../shared/layouts/ReviewShell';
 import { Button } from '../../shared/components/Button';
 import { LoadingSpinner } from '../../shared/components/StateViews';
@@ -24,6 +25,14 @@ interface ResumePromptProps {
   onResume: () => void;
   onRestart: () => void;
 }
+
+type CardTiming = {
+  shownAt: number;
+  flippedAt?: number;
+  answeredAt?: number;
+  answerMethod?: AnswerMethod;
+  wasAutoShown?: boolean;
+};
 
 function ResumePrompt({ onResume, onRestart }: ResumePromptProps) {
   return (
@@ -467,6 +476,8 @@ export function ReviewPage({ mode = 'full', seedCardIds }: { mode?: SessionMode;
   const [pendingSnapshot, setPendingSnapshot] = useState<ActiveSessionSnapshot | null>(null);
   const [buttonFeedback, setButtonFeedback] = useState<'correct' | 'incorrect' | 'flagged' | null>(null);
   const buttonFeedbackTimeoutRef = useRef<number | null>(null);
+  const cardTimingRef = useRef<Record<number, CardTiming>>({});
+  const sessionStartedAtRef = useRef<number | null>(null);
 
   const [state, dispatch] = useReducer(reviewReducer, {
     queue: [],
@@ -480,6 +491,70 @@ export function ReviewPage({ mode = 'full', seedCardIds }: { mode?: SessionMode;
     isComplete: false,
     totalCards: 0,
   });
+
+  const currentCard = state.queue[state.currentIndex];
+  const currentCardAnswered = currentCard ? Boolean(state.outcomes[currentCard.id]) : false;
+  const interactionLocked = buttonFeedback !== null;
+
+  const ensureCardTiming = useCallback((cardId: number, shownAt = Date.now()): CardTiming => {
+    const existing = cardTimingRef.current[cardId];
+    if (existing) {
+      if (existing.wasAutoShown === undefined) {
+        existing.wasAutoShown = false;
+      }
+      return existing;
+    }
+
+    const timing: CardTiming = {
+      shownAt,
+      wasAutoShown: false,
+    };
+    cardTimingRef.current[cardId] = timing;
+    return timing;
+  }, []);
+
+  const dispatchOutcome = useCallback((outcome: 'correct' | 'incorrect' | 'flagged') => {
+    dispatch({
+      type: outcome === 'correct'
+        ? 'MARK_CORRECT'
+        : outcome === 'incorrect'
+          ? 'MARK_INCORRECT'
+          : 'MARK_FLAGGED',
+    });
+  }, []);
+
+  const toggleCurrentCard = useCallback((source: 'manual' | 'auto') => {
+    if (!currentCard || interactionLocked) return;
+
+    if (!state.isFlipped) {
+      const now = Date.now();
+      const timing = ensureCardTiming(currentCard.id, now);
+      if (timing.flippedAt === undefined) {
+        timing.flippedAt = now;
+      }
+      if (source === 'auto') {
+        timing.wasAutoShown = true;
+      }
+    }
+
+    dispatch({ type: 'FLIP' });
+  }, [currentCard, ensureCardTiming, interactionLocked, state.isFlipped]);
+
+  const captureAnsweredAt = useCallback((method: AnswerMethod) => {
+    if (!currentCard) return;
+
+    const now = Date.now();
+    const timing = ensureCardTiming(currentCard.id, now);
+    timing.answeredAt = now;
+    timing.answerMethod = method;
+  }, [currentCard, ensureCardTiming]);
+
+  const resolveOutcome = useCallback((outcome: 'correct' | 'incorrect' | 'flagged', method: AnswerMethod) => {
+    if (interactionLocked || !state.isFlipped || !currentCard || currentCardAnswered) return;
+
+    captureAnsweredAt(method);
+    dispatchOutcome(outcome);
+  }, [captureAnsweredAt, currentCard, currentCardAnswered, dispatchOutcome, interactionLocked, state.isFlipped]);
 
   // Save snapshot periodically and on change
   const saveSnapshot = useCallback(async (s: typeof state) => {
@@ -506,13 +581,15 @@ export function ReviewPage({ mode = 'full', seedCardIds }: { mode?: SessionMode;
       if (existing) {
         try {
           const snapshot: ActiveSessionSnapshot = JSON.parse(existing.snapshot);
+          const existingSession = await sessionRepo.getById(snapshot.sessionId);
           // Validate that cards in snapshot still exist
           const cardIds = snapshot.queue.map((c) => c.id);
           if (cardIds.length > 0) {
             const dbCards = await db.cards.bulkGet(cardIds);
-            const allExist = dbCards.every(Boolean);
-            if (allExist) {
+            const allExist = dbCards.every((card) => Boolean(card && !card.deletedAt));
+            if (allExist && existingSession) {
               if (!cancelled) {
+                sessionStartedAtRef.current = existingSession.startedAt;
                 setPendingSnapshot(snapshot);
                 setPageStatus('resuming');
                 return;
@@ -538,10 +615,20 @@ export function ReviewPage({ mode = 'full', seedCardIds }: { mode?: SessionMode;
 
       if (seedCardIds) {
         const fetched = await db.cards.bulkGet(seedCardIds);
-        cards = fetched.filter(Boolean).map((c) => ({ id: c!.id!, question: c!.question, answer: c!.answer }));
+        cards = fetched.reduce<ReviewCard[]>((accumulator, card) => {
+          if (card && !card.deletedAt && typeof card.id === 'number') {
+            accumulator.push({ id: card.id, question: card.question, answer: card.answer });
+          }
+          return accumulator;
+        }, []);
       } else {
         const dbCards = await db.cards.where('setId').equals(id).toArray();
-        cards = dbCards.map((c) => ({ id: c.id!, question: c.question, answer: c.answer }));
+        cards = dbCards.reduce<ReviewCard[]>((accumulator, card) => {
+          if (!card.deletedAt && typeof card.id === 'number') {
+            accumulator.push({ id: card.id, question: card.question, answer: card.answer });
+          }
+          return accumulator;
+        }, []);
       }
 
       if (cards.length === 0) {
@@ -550,12 +637,15 @@ export function ReviewPage({ mode = 'full', seedCardIds }: { mode?: SessionMode;
         return;
       }
 
+      const startedAt = Date.now();
       const sessionId = await sessionRepo.create({
         setId: id,
-        startedAt: Date.now(),
+        startedAt,
         mode,
       });
 
+      cardTimingRef.current = {};
+      sessionStartedAtRef.current = startedAt;
       const initialState = buildInitialState(cards, sessionId, id, mode, settings.shuffleCards);
       dispatch({ type: 'RESTORE', payload: toSnapshot(initialState) });
       setPageStatus('reviewing');
@@ -571,11 +661,14 @@ export function ReviewPage({ mode = 'full', seedCardIds }: { mode?: SessionMode;
       activeSessionRepo.deleteBySetId(id),
       sessionRepo.delete(pendingSnapshot.sessionId),
     ]);
+    cardTimingRef.current = {};
+    sessionStartedAtRef.current = null;
     setPendingSnapshot(null);
   }, [id, pendingSnapshot]);
 
   const handleResume = () => {
     if (!pendingSnapshot) return;
+    cardTimingRef.current = {};
     dispatch({ type: 'RESTORE', payload: pendingSnapshot });
     setPendingSnapshot(null);
     setPageStatus('reviewing');
@@ -591,30 +684,67 @@ export function ReviewPage({ mode = 'full', seedCardIds }: { mode?: SessionMode;
       setPageStatus('completing');
       try {
         const sessionId = state.sessionId!;
+        const completedAt = Date.now();
+        const session = await sessionRepo.getById(sessionId);
+        const startedAt = sessionStartedAtRef.current ?? session?.startedAt ?? completedAt;
         const correct = getCorrectCount(state.outcomes);
-        const total = Object.keys(state.outcomes).length;
+        const incorrect = getIncorrectCount(state.outcomes);
+        const flagged = getFlaggedCount(state.outcomes);
+        const total = state.totalCards;
+        const score = total > 0 ? Math.round((correct / total) * 100) : 0;
+        const durationMs = Math.max(0, completedAt - startedAt);
 
         // Persist results
-        const resultEntries = Object.entries(state.outcomes).map(([cardId, outcome]) => ({
+        const resultEntries = (Object.entries(state.outcomes) as Array<[string, Outcome]>).map(([cardId, outcome]) => {
+          const resolvedCardId = parseInt(cardId, 10);
+          const timing = cardTimingRef.current[resolvedCardId];
+          const answeredAt = timing?.answeredAt;
+          const shownAt = timing?.shownAt;
+
+          return {
+            sessionId,
+            cardId: resolvedCardId,
+            outcome,
+            timestamp: answeredAt ?? completedAt,
+            shownAt,
+            flippedAt: timing?.flippedAt,
+            answeredAt,
+            responseMs: shownAt !== undefined && answeredAt !== undefined
+              ? answeredAt - shownAt
+              : undefined,
+            wasAutoShown: timing?.wasAutoShown,
+            answerMethod: timing?.answerMethod,
+          };
+        });
+        const statsUpdates = resultEntries.map((result) => ({
+          cardId: result.cardId,
+          outcome: result.outcome,
+          reviewedAt: result.timestamp,
+          responseMs: result.responseMs,
+        }));
+        const completionResult = await sessionRepo.completeSessionWithResults({
           sessionId,
-          cardId: parseInt(cardId, 10),
-          outcome,
-          timestamp: Date.now(),
-        }));
-        await resultRepo.bulkCreate(resultEntries);
+          score,
+          results: resultEntries,
+          statsUpdates,
+          summary: {
+            completedAt,
+            totalCards: total,
+            correctCount: correct,
+            incorrectCount: incorrect,
+            flaggedCount: flagged,
+            durationMs,
+          },
+        });
 
-        // Update stats
-        const statsUpdates = Object.entries(state.outcomes).map(([cardId, outcome]) => ({
-          cardId: parseInt(cardId, 10),
-          outcome,
-        }));
-        await statsRepo.upsertMany(statsUpdates);
-
-        // Mark session complete
-        await sessionRepo.complete(sessionId, total > 0 ? Math.round((correct / total) * 100) : 0);
-
-        // Clear active session
-        await activeSessionRepo.deleteBySetId(id);
+        if (completionResult.status === 'completed') {
+          void updateRollupsForCompletedSession(sessionId).catch((error) => {
+            console.error('Analytics rollups update failed', error);
+            if (!cancelled) {
+              addToast('Session saved. Analytics can be recalculated later.', 'info');
+            }
+          });
+        }
 
         if (!cancelled) navigate(`/results/${sessionId}`);
       } catch (err) {
@@ -635,21 +765,22 @@ export function ReviewPage({ mode = 'full', seedCardIds }: { mode?: SessionMode;
     return () => clearTimeout(timer);
   }, [state, pageStatus, saveSnapshot]);
 
+  useEffect(() => {
+    if (pageStatus !== 'reviewing' || !currentCard) return;
+    ensureCardTiming(currentCard.id);
+  }, [currentCard, ensureCardTiming, pageStatus]);
+
   // Auto-show answer after configured delay
   useEffect(() => {
     if (pageStatus !== 'reviewing') return;
     if (settings.autoShowAnswer === 0) return;
     if (state.isFlipped) return;
     const timer = setTimeout(
-      () => dispatch({ type: 'FLIP' }),
+      () => toggleCurrentCard('auto'),
       settings.autoShowAnswer * 1000,
     );
     return () => clearTimeout(timer);
-  }, [pageStatus, state.currentIndex, state.isFlipped, settings.autoShowAnswer]);
-
-  const currentCard = state.queue[state.currentIndex];
-  const currentCardAnswered = currentCard ? Boolean(state.outcomes[currentCard.id]) : false;
-  const interactionLocked = buttonFeedback !== null;
+  }, [pageStatus, settings.autoShowAnswer, state.currentIndex, state.isFlipped, toggleCurrentCard]);
 
   const navigateToCard = useCallback((index: number) => {
     if (interactionLocked) return;
@@ -663,43 +794,34 @@ export function ReviewPage({ mode = 'full', seedCardIds }: { mode?: SessionMode;
     }
   }, []);
 
-  const resolveOutcomeWithFeedback = useCallback((outcome: 'correct' | 'incorrect' | 'flagged') => {
+  const resolveOutcomeWithFeedback = useCallback((outcome: 'correct' | 'incorrect' | 'flagged', method: AnswerMethod = 'button') => {
     if (interactionLocked || !state.isFlipped || !currentCard || currentCardAnswered) return;
 
+    captureAnsweredAt(method);
     setButtonFeedback(outcome);
     clearButtonFeedbackTimer();
 
     buttonFeedbackTimeoutRef.current = window.setTimeout(() => {
-      dispatch({
-        type: outcome === 'correct'
-          ? 'MARK_CORRECT'
-          : outcome === 'incorrect'
-            ? 'MARK_INCORRECT'
-            : 'MARK_FLAGGED',
-      });
+      dispatchOutcome(outcome);
       setButtonFeedback(null);
       buttonFeedbackTimeoutRef.current = null;
     }, 170);
-  }, [clearButtonFeedbackTimer, currentCard, currentCardAnswered, interactionLocked, state.isFlipped]);
+  }, [captureAnsweredAt, clearButtonFeedbackTimer, currentCard, currentCardAnswered, dispatchOutcome, interactionLocked, state.isFlipped]);
 
   const swipeHandlers = useReviewSwipe({
     enabled: settings.swipeGestures && !interactionLocked,
     canSwipe: Boolean(state.isFlipped && currentCard && !currentCardAnswered && !interactionLocked),
     onTap: () => {
-      if (interactionLocked) return;
-      dispatch({ type: 'FLIP' });
+      toggleCurrentCard('manual');
     },
     onSwipeLeft: () => {
-      if (interactionLocked) return;
-      dispatch({ type: 'MARK_INCORRECT' });
+      resolveOutcome('incorrect', 'swipe');
     },
     onSwipeRight: () => {
-      if (interactionLocked) return;
-      dispatch({ type: 'MARK_CORRECT' });
+      resolveOutcome('correct', 'swipe');
     },
     onSwipeUp: () => {
-      if (interactionLocked) return;
-      dispatch({ type: 'MARK_FLAGGED' });
+      resolveOutcome('flagged', 'swipe');
     },
   });
 
@@ -726,7 +848,7 @@ export function ReviewPage({ mode = 'full', seedCardIds }: { mode?: SessionMode;
       switch (e.key) {
         case ' ':
           e.preventDefault();
-          dispatch({ type: 'FLIP' });
+          toggleCurrentCard('manual');
           break;
         case 'ArrowLeft':
           dispatch({ type: 'NAVIGATE_PREV' });
@@ -735,19 +857,19 @@ export function ReviewPage({ mode = 'full', seedCardIds }: { mode?: SessionMode;
           dispatch({ type: 'NAVIGATE_NEXT' });
           break;
         case '1':
-          resolveOutcomeWithFeedback('incorrect');
+          resolveOutcomeWithFeedback('incorrect', 'keyboard');
           break;
         case '2':
-          resolveOutcomeWithFeedback('flagged');
+          resolveOutcomeWithFeedback('flagged', 'keyboard');
           break;
         case '3':
-          resolveOutcomeWithFeedback('correct');
+          resolveOutcomeWithFeedback('correct', 'keyboard');
           break;
       }
     };
     window.addEventListener('keydown', handler);
     return () => window.removeEventListener('keydown', handler);
-  }, [interactionLocked, pageStatus, resolveOutcomeWithFeedback]);
+  }, [interactionLocked, pageStatus, resolveOutcomeWithFeedback, toggleCurrentCard]);
 
   // ─── Render ──────────────────────────────────────────────────────────────────
 
@@ -809,8 +931,7 @@ export function ReviewPage({ mode = 'full', seedCardIds }: { mode?: SessionMode;
                 answer={currentCard.answer}
                 isFlipped={state.isFlipped}
                 onFlip={() => {
-                  if (interactionLocked) return;
-                  dispatch({ type: 'FLIP' });
+                  toggleCurrentCard('manual');
                 }}
                 animationEnabled={settings.flipAnimation}
                 onPointerDown={swipeHandlers.handlePointerDown}
@@ -858,7 +979,7 @@ export function ReviewPage({ mode = 'full', seedCardIds }: { mode?: SessionMode;
                 )}
               >
                 <button
-                  onClick={() => resolveOutcomeWithFeedback('incorrect')}
+                  onClick={() => resolveOutcomeWithFeedback('incorrect', 'button')}
                   disabled={Boolean(buttonFeedback)}
                   className="group flex flex-col items-center gap-1 rounded-2xl px-1 py-1 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-app-nav-dark focus-visible:ring-offset-2 focus-visible:ring-offset-app-bg"
                   aria-label="Mark incorrect (key: 1)"
@@ -872,7 +993,7 @@ export function ReviewPage({ mode = 'full', seedCardIds }: { mode?: SessionMode;
                 </button>
 
                 <button
-                  onClick={() => resolveOutcomeWithFeedback('flagged')}
+                  onClick={() => resolveOutcomeWithFeedback('flagged', 'button')}
                   disabled={Boolean(buttonFeedback)}
                   className="group flex flex-col items-center gap-1 rounded-2xl px-1 py-1 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-app-nav-dark focus-visible:ring-offset-2 focus-visible:ring-offset-app-bg"
                   aria-label="Flag for review (key: 2)"
@@ -886,7 +1007,7 @@ export function ReviewPage({ mode = 'full', seedCardIds }: { mode?: SessionMode;
                 </button>
 
                 <button
-                  onClick={() => resolveOutcomeWithFeedback('correct')}
+                  onClick={() => resolveOutcomeWithFeedback('correct', 'button')}
                   disabled={Boolean(buttonFeedback)}
                   className="group flex flex-col items-center gap-1 rounded-2xl px-1 py-1 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-app-nav-dark focus-visible:ring-offset-2 focus-visible:ring-offset-app-bg"
                   aria-label="Mark correct (key: 3)"

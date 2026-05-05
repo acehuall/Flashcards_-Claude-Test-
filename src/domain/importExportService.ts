@@ -1,4 +1,5 @@
 import { db } from '../db';
+import { markAnalyticsRollupsDirtyInTransaction } from '../db/repositories/analyticsRepo';
 import type { ActiveSession, Card, FlashSet, Outcome, Pack, Result, Session, SessionMode, Stat } from './types';
 import type {
   ExportOptions,
@@ -504,7 +505,7 @@ export async function executeImport(plan: ImportPlan): Promise<void> {
 
   await db.transaction(
     'rw',
-    [db.packs, db.sets, db.cards, db.sessions, db.results, db.stats, db.activeSessions],
+    [db.packs, db.sets, db.cards, db.sessions, db.results, db.stats, db.activeSessions, db.analyticsMeta],
     async () => {
       const existingState = await loadImportState();
       const analysisPlan: AnalysisPlan = {
@@ -532,6 +533,7 @@ export async function executeImport(plan: ImportPlan): Promise<void> {
       }
 
       await importSupplementalData(importPlan, executionContext);
+      await markAnalyticsRollupsDirtyInTransaction(`import-${importPlan.mode}-${importPlan.file.scope}`);
     },
   );
 }

@@ -1,4 +1,5 @@
 import { db } from '../db';
+import { markAnalyticsRollupsDirtyInTransaction } from '../db/repositories/analyticsRepo';
 
 /**
  * Soft-delete a Pack and all descendant sets + cards.
@@ -7,7 +8,7 @@ import { db } from '../db';
 export async function deletePack(packId: number): Promise<void> {
   await db.transaction(
     'rw',
-    [db.packs, db.sets, db.cards, db.sessions, db.results, db.stats, db.activeSessions],
+    [db.packs, db.sets, db.cards, db.sessions, db.results, db.stats, db.activeSessions, db.analyticsMeta],
     async () => {
       const now = Date.now();
       const sets = await db.sets.where('packId').equals(packId).toArray();
@@ -27,6 +28,7 @@ export async function deletePack(packId: number): Promise<void> {
 
       // Soft-delete the pack
       await db.packs.update(packId, { deletedAt: now, updatedAt: now, syncStatus: 'pending' });
+      await markAnalyticsRollupsDirtyInTransaction('delete-pack', now);
     },
   );
 }
@@ -38,7 +40,7 @@ export async function deletePack(packId: number): Promise<void> {
 export async function deleteSet(setId: number): Promise<void> {
   await db.transaction(
     'rw',
-    [db.sets, db.cards, db.sessions, db.results, db.stats, db.activeSessions],
+    [db.sets, db.cards, db.sessions, db.results, db.stats, db.activeSessions, db.analyticsMeta],
     async () => {
       const now = Date.now();
       await hardDeleteSetDependencies([setId]);
@@ -48,6 +50,7 @@ export async function deleteSet(setId: number): Promise<void> {
       });
       // Soft-delete the set
       await db.sets.update(setId, { deletedAt: now, updatedAt: now, syncStatus: 'pending' });
+      await markAnalyticsRollupsDirtyInTransaction('delete-set', now);
     },
   );
 }
@@ -57,11 +60,12 @@ export async function deleteSet(setId: number): Promise<void> {
  * Stats and results are hard-deleted (not synced).
  */
 export async function deleteCard(cardId: number): Promise<void> {
-  await db.transaction('rw', [db.cards, db.stats, db.results], async () => {
+  await db.transaction('rw', [db.cards, db.stats, db.results, db.analyticsMeta], async () => {
     const now = Date.now();
     await db.results.where('cardId').equals(cardId).delete();
     await db.stats.where('cardId').equals(cardId).delete();
     await db.cards.update(cardId, { deletedAt: now, updatedAt: now, syncStatus: 'pending' });
+    await markAnalyticsRollupsDirtyInTransaction('delete-card', now);
   });
 }
 

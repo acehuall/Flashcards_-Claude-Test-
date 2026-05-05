@@ -47,6 +47,7 @@ export interface Card {
 
 export type Outcome = 'correct' | 'incorrect' | 'flagged';
 export type SessionMode = 'full' | 'flagged' | 'incorrect-only';
+export type AnswerMethod = 'button' | 'keyboard' | 'swipe';
 
 export interface Session {
   id?: number;
@@ -56,6 +57,11 @@ export interface Session {
   completedAt?: number;
   score?: number;
   mode: SessionMode;
+  totalCards?: number;
+  correctCount?: number;
+  incorrectCount?: number;
+  flaggedCount?: number;
+  durationMs?: number;
 }
 
 export interface Result {
@@ -64,6 +70,12 @@ export interface Result {
   cardId: number;
   outcome: Outcome;
   timestamp: number;
+  shownAt?: number;
+  flippedAt?: number;
+  answeredAt?: number;
+  responseMs?: number;
+  wasAutoShown?: boolean;
+  answerMethod?: AnswerMethod;
 }
 
 export interface Stat {
@@ -74,6 +86,70 @@ export interface Stat {
   flaggedCount: number;
   lastResult?: Outcome;
   lastReviewedAt?: number;
+  reviewCount?: number;
+  currentCorrectStreak?: number;
+  bestCorrectStreak?: number;
+  currentIncorrectStreak?: number;
+  avgResponseMs?: number;
+  fastestResponseMs?: number;
+  slowestResponseMs?: number;
+  firstReviewedAt?: number;
+}
+
+// ─── Local Analytics Rollups ──────────────────────────────────────────────────
+
+export interface DailyStudyRollup {
+  id?: number;
+  dateKey: string; // yyyy-mm-dd, local date
+  reviewedCount: number;
+  correctCount: number;
+  incorrectCount: number;
+  flaggedCount: number;
+  totalDurationMs: number;
+  sessionCount: number;
+  avgResponseMs?: number;
+  updatedAt: number;
+}
+
+export interface SetStudyRollup {
+  id?: number;
+  setId: number;
+  reviewedCount: number;
+  correctCount: number;
+  incorrectCount: number;
+  flaggedCount: number;
+  sessionCount: number;
+  totalDurationMs: number;
+  avgResponseMs?: number;
+  weakCardCount?: number;
+  lastReviewedAt?: number;
+  updatedAt: number;
+}
+
+export type CardRetentionStatus = 'strong' | 'improving' | 'needs-practice' | 'not-reviewed-recently' | 'due';
+
+export interface CardRetention {
+  id?: number;
+  cardId: number;
+  setId: number;
+  reviewCount: number;
+  recentAccuracy: number; // 0 to 1
+  lifetimeAccuracy: number; // 0 to 1
+  avgResponseMs?: number;
+  lastReviewedAt?: number;
+  daysSinceLastReview?: number;
+  retentionScore: number; // 0 to 100
+  status: CardRetentionStatus;
+  updatedAt: number;
+}
+
+export interface AnalyticsMeta {
+  key: 'rollups';
+  dirty: boolean;
+  version: number;
+  lastRebuiltAt?: number;
+  lastMarkedDirtyAt?: number;
+  reason?: string;
 }
 
 // ─── Active Session Snapshot ──────────────────────────────────────────────────
