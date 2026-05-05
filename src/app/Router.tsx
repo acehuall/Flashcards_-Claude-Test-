@@ -9,6 +9,7 @@ import { SetDetailPage }   from '../features/sets/SetDetailPage';
 import { CreateCardPage, EditCardPage } from '../features/cards/CardFormPages';
 import { ReviewPage }      from '../features/review/ReviewPage';
 import { ResultsPage }     from '../features/results/ResultsPage';
+import { AnalyticsPage }   from '../features/analytics/AnalyticsPage';
 import { SettingsPage }    from '../features/settings/SettingsPage';
 import { NotFoundPage }    from '../features/notfound/NotFoundPage';
 import { LoadingSpinner }  from '../shared/components/StateViews';
@@ -48,6 +49,7 @@ export function AppRouter() {
           <Route path="/set/:setId"              element={<SetDetailPage />} />
           <Route path="/review/:setId"           element={<ReviewPageWrapper />} />
           <Route path="/results/:sessionId"      element={<ResultsPage />} />
+          <Route path="/analytics"               element={<AnalyticsPage />} />
           <Route path="/create/pack"             element={<CreatePackPage />} />
           <Route path="/create/set/:packId"      element={<CreateSetPage />} />
           <Route path="/create/card/:setId"      element={<CreateCardPage />} />
