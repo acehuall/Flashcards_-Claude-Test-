@@ -45,7 +45,7 @@ export function SetPerformanceTable({ rows, onReviewWeakCards }: SetPerformanceT
                 : 'Review weak cards';
 
             return (
-              <article key={row.setId} className="rounded-card border border-app-border bg-app-surface-2 px-4 py-4">
+              <article key={row.setId} className="min-w-0 rounded-card border border-app-border bg-app-surface-2 px-4 py-4">
                 <div className="flex flex-col gap-3 md:flex-row md:items-start md:justify-between">
                   <div className="min-w-0">
                     <div className="flex flex-wrap items-center gap-2">
@@ -105,7 +105,7 @@ export function SetPerformanceTable({ rows, onReviewWeakCards }: SetPerformanceT
                     </div>
                   </div>
 
-                  <div className="md:shrink-0">
+                  <div className="min-w-0 md:shrink-0">
                     {canReviewCards && reviewCardIds.length > 0 ? (
                       <Button size="sm" onClick={() => onReviewWeakCards(row.setId, reviewCardIds)}>
                         {reviewButtonLabel}

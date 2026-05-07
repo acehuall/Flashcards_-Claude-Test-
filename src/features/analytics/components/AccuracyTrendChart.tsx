@@ -33,7 +33,7 @@ export function AccuracyTrendChart({ data }: AccuracyTrendChartProps) {
       {data.length === 0 ? (
         <p className="text-sm text-app-secondary">Complete a review session to see your accuracy trend.</p>
       ) : (
-        <div className="h-64">
+        <div className="min-w-0 h-48 sm:h-64">
           <ResponsiveContainer width="100%" height="100%">
             <LineChart data={data} margin={{ top: 8, right: 8, left: -20, bottom: 0 }}>
               <CartesianGrid stroke="rgb(var(--app-border))" strokeDasharray="3 3" vertical={false} opacity={0.65} />

@@ -58,9 +58,9 @@ export function StudyHeatmap({ days }: StudyHeatmapProps) {
             ))}
           </div>
 
-          <div className="mt-4 flex items-center justify-between gap-4 text-xs text-app-secondary">
+          <div className="mt-4 flex flex-wrap items-center justify-between gap-2 text-xs text-app-secondary">
             <span>{days[0]?.fullLabel}</span>
-            <div className="flex items-center gap-2">
+            <div className="flex flex-wrap items-center gap-1.5">
               <span>Less</span>
               <div className="h-3 w-3 rounded-sm border border-app-border bg-app-surface-2" />
               <div className="h-3 w-3 rounded-sm border border-app-border bg-app-nav/30" />
