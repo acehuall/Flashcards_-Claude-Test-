@@ -52,10 +52,10 @@ export function StandardShell({ children }: StandardShellProps) {
   const showOfflineBanner = !isLocalOnly && !!user && status === 'offline';
 
   return (
-    <div className="min-h-screen bg-app-bg flex flex-col">
+    <div className="min-h-screen bg-app-bg flex flex-col overflow-x-hidden">
       {/* Top bar — padded for safe-area on iOS notch devices */}
       <header className="sticky top-0 z-40 border-b border-app-border-strong/75 bg-app-bg-alt/88 backdrop-blur-md pt-safe-top">
-        <div className="max-w-5xl mx-auto px-6 h-14 flex items-center justify-between">
+        <div className="max-w-5xl mx-auto px-3 sm:px-6 h-14 flex items-center justify-between gap-2">
           <Link
             to="/"
             className="flex items-center gap-2 text-app-primary font-bold text-lg hover:opacity-80 transition-opacity"
@@ -63,10 +63,10 @@ export function StandardShell({ children }: StandardShellProps) {
             <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border border-app-border bg-app-primary/5">
               <img src="/icons/Icon-128.png" alt="" className="h-5 w-5 object-contain" aria-hidden="true" />
             </span>
-            <span>Flashcards</span>
+            <span className="hidden sm:inline">Flashcards</span>
           </Link>
 
-          <nav className="flex items-center gap-1" aria-label="Main navigation">
+          <nav className="min-w-0 flex items-center gap-1" aria-label="Main navigation">
             <SyncStatusBadge />
             {navItems.map((item) => (
               <NavLink
@@ -75,7 +75,7 @@ export function StandardShell({ children }: StandardShellProps) {
                 end={item.to === '/'}
                 className={({ isActive }) =>
                   clsx(
-                    'flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-app-nav-dark focus-visible:ring-offset-2 focus-visible:ring-offset-app-bg-alt',
+                    'shrink-0 flex items-center gap-1.5 px-2 sm:px-3 py-1.5 rounded-lg text-sm transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-app-nav-dark focus-visible:ring-offset-2 focus-visible:ring-offset-app-bg-alt',
                     isActive
                       ? 'bg-app-nav text-app-accent-ink shadow-[0_0_0_1px_rgb(var(--app-nav-dark))_inset]'
                       : 'text-app-secondary hover:bg-app-surface-2/80 hover:text-app-primary',
@@ -83,7 +83,7 @@ export function StandardShell({ children }: StandardShellProps) {
                 }
               >
                 {item.icon}
-                <span>{item.label}</span>
+                <span className="hidden sm:inline">{item.label}</span>
               </NavLink>
             ))}
           </nav>
@@ -91,7 +91,7 @@ export function StandardShell({ children }: StandardShellProps) {
       </header>
 
       {/* Main content — bottom padding ensures banners don't obscure content */}
-      <main className="flex-1 max-w-5xl w-full mx-auto px-6 py-8 pb-safe-bottom">
+      <main className="flex-1 max-w-5xl w-full mx-auto px-3 sm:px-6 py-5 sm:py-8 pb-safe-bottom overflow-x-hidden">
         {children}
       </main>
 

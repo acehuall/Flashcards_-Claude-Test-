@@ -40,7 +40,7 @@ export function WeakCardsList({ items, onReviewCard, onReviewSetWeakCards }: Wea
       ) : (
         <div className="space-y-3">
           {items.map((item) => (
-            <article key={item.cardId} className="rounded-card border border-app-border bg-app-surface-2 px-4 py-4">
+            <article key={item.cardId} className="min-w-0 rounded-card border border-app-border bg-app-surface-2 px-4 py-4">
               <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
                 <div className="min-w-0 flex-1">
                   <p className="text-sm font-medium text-app-primary line-clamp-2">{item.question}</p>
@@ -67,7 +67,7 @@ export function WeakCardsList({ items, onReviewCard, onReviewSetWeakCards }: Wea
                   </div>
                 </div>
 
-                <div className="flex flex-wrap gap-2 lg:justify-end">
+                <div className="min-w-0 flex flex-wrap gap-2 lg:justify-end">
                   {item.canReview && (
                     <Button size="sm" onClick={() => onReviewCard(item.setId, item.cardId)}>
                       Review card
