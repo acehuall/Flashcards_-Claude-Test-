@@ -63,7 +63,7 @@ export function StandardShell({ children }: StandardShellProps) {
             <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg border border-app-border bg-app-primary/5">
               <img src="/icons/Icon-128.png" alt="" className="h-5 w-5 object-contain" aria-hidden="true" />
             </span>
-            <span className="hidden sm:inline">Flashcards</span>
+            <span>Flashcards</span>
           </Link>
 
           <nav className="min-w-0 flex items-center gap-1" aria-label="Main navigation">
