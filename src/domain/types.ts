@@ -57,6 +57,7 @@ export interface Session {
   completedAt?: number;
   score?: number;
   mode: SessionMode;
+  displayMode?: 'flip' | 'multiple-choice';
   totalCards?: number;
   correctCount?: number;
   incorrectCount?: number;
@@ -76,6 +77,7 @@ export interface Result {
   responseMs?: number;
   wasAutoShown?: boolean;
   answerMethod?: AnswerMethod;
+  selectedAnswer?: string;
 }
 
 export interface Stat {
@@ -121,6 +123,12 @@ export interface SetStudyRollup {
   sessionCount: number;
   totalDurationMs: number;
   avgResponseMs?: number;
+  mcqSessionCount?: number;
+  flipSessionCount?: number;
+  mcqCorrectCount?: number;
+  mcqReviewedCount?: number;
+  flipCorrectCount?: number;
+  flipReviewedCount?: number;
   weakCardCount?: number;
   lastReviewedAt?: number;
   updatedAt: number;
@@ -133,6 +141,7 @@ export interface CardRetention {
   cardId: number;
   setId: number;
   reviewCount: number;
+  mcqReviewCount?: number;
   recentAccuracy: number; // 0 to 1
   lifetimeAccuracy: number; // 0 to 1
   avgResponseMs?: number;
@@ -164,6 +173,7 @@ export interface ActiveSessionSnapshot {
   sessionId: number;
   setId: number;
   mode: SessionMode;
+  displayMode?: 'flip' | 'multiple-choice';
   queue: ReviewCard[];
   currentIndex: number;
   outcomes: Record<number, Outcome>;
@@ -188,6 +198,7 @@ export interface AppSettings {
   autoShowAnswer: 0 | 3 | 5 | 10;
   swipeGestures: boolean;    // stored but not implemented in Phase A
   studyReminders: boolean;   // stored but not implemented in Phase A
+  cardMode: 'flip' | 'multiple-choice';
   baseThemeId: BaseThemeId;
   accentHex: string;
   accentByBase?: Partial<Record<BaseThemeId, string>>;
@@ -199,6 +210,7 @@ export const DEFAULT_SETTINGS: AppSettings = {
   autoShowAnswer: 0,
   swipeGestures: true,
   studyReminders: false,
+  cardMode: 'flip',
   baseThemeId: DEFAULT_BASE_THEME_ID,
   accentHex: DEFAULT_ACCENT_HEX,
   accentByBase: { ...DEFAULT_ACCENT_BY_BASE },
@@ -223,6 +235,7 @@ export interface ReviewState {
   sessionId: number | null;
   setId: number;
   mode: SessionMode;
+  displayMode?: 'flip' | 'multiple-choice';
   isComplete: boolean;
   totalCards: number;        // original queue size for progress display
 }

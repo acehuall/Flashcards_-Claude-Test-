@@ -85,6 +85,15 @@ export function SetPerformanceTable({ rows, onReviewWeakCards }: SetPerformanceT
                         <p className={`mt-1 font-semibold ${row.accuracy !== null && row.accuracy >= 70 ? 'text-app-correct' : 'text-app-primary'}`}>
                           {row.accuracy !== null ? `${row.accuracy}%` : 'No data'}
                         </p>
+                        {row.mcqSessionCount > 0 && row.flipSessionCount > 0 && (
+                          <div className="mt-1 flex gap-2 text-[10px] text-app-secondary"> 
+                            {row.flipAccuracy !== null && <span>Flip: {row.flipAccuracy}%</span>}
+                            {row.mcqAccuracy !== null && <span>MCQ: {row.mcqAccuracy}%</span>}
+                          </div>
+                        )}
+                        {row.mcqSessionCount > 0 && row.flipSessionCount === 0 && (
+                          <p className="mt-0.5 text-[10px] text-app-secondary">Multiple choice only</p>
+                        )}
                       </div>
                       <div>
                         <p className="text-[11px] uppercase tracking-wide text-app-secondary">Avg response</p>

@@ -9,6 +9,7 @@ interface SessionCompletionSummary {
   incorrectCount?: number;
   flaggedCount?: number;
   durationMs?: number;
+  displayMode?: 'flip' | 'multiple-choice';
 }
 
 interface StatUpdate {
@@ -123,6 +124,7 @@ export const sessionRepo = {
       incorrectCount: summary.incorrectCount,
       flaggedCount: summary.flaggedCount,
       durationMs: summary.durationMs,
+      displayMode: summary.displayMode,
     });
   },
 
@@ -160,6 +162,7 @@ export const sessionRepo = {
         incorrectCount: summary.incorrectCount,
         flaggedCount: summary.flaggedCount,
         durationMs: summary.durationMs,
+        displayMode: summary.displayMode,
       });
 
       if (results.length > 0) {
