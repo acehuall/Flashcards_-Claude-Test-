@@ -428,7 +428,9 @@ function Filmstrip({ cards, activeIndex, outcomes, onSelect, disabled = false }:
                   ? 'rgb(var(--app-correct))'
                   : outcome === 'incorrect'
                     ? 'rgb(var(--app-incorrect))'
-                    : 'rgb(var(--app-border) / 0.85)';
+                    : outcome === 'flagged'
+                      ? 'rgb(var(--app-flag))'
+                      : 'rgb(var(--app-border) / 0.85)';
 
               return (
                 <button

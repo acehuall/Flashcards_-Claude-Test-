@@ -41,7 +41,6 @@ export function AccuracyTrendChart({ data }: AccuracyTrendChartProps) {
                 dataKey="label"
                 axisLine={false}
                 tickLine={false}
-                tickMargin={10}
                 tick={{ fill: 'rgb(var(--app-secondary))', fontSize: 12 }}
               />
               <YAxis
