@@ -117,6 +117,21 @@ export class FlashcardDatabase extends Dexie {
       cardRetentions:    '++id, &cardId, setId, retentionScore, status, lastReviewedAt, updatedAt',
       analyticsMeta:     '&key, dirty, version, lastRebuiltAt, lastMarkedDirtyAt',
     });
+
+    this.version(7).stores({
+      packs:             '++id, &portableId, name, createdAt, syncStatus',
+      sets:              '++id, &portableId, packId, title, createdAt, syncStatus',
+      cards:             '++id, &portableId, setId, createdAt, syncStatus',
+      sessions:          '++id, &portableId, setId, startedAt, completedAt, mode, displayMode',
+      results:           '++id, sessionId, cardId, outcome, timestamp, [cardId+timestamp]',
+      stats:             '++id, &cardId, lastReviewedAt, lastResult',
+      activeSessions:    '++id, setId, sessionId',
+      dailyStudyRollups: '++id, &dateKey, updatedAt',
+      setStudyRollups:   '++id, &setId, lastReviewedAt, updatedAt',
+      cardRetentions:    '++id, &cardId, setId, retentionScore, status, lastReviewedAt, updatedAt',
+      analyticsMeta:     '&key, dirty, version, lastRebuiltAt, lastMarkedDirtyAt',
+    });
+
   }
 }
 

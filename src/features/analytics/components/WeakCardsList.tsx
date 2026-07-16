@@ -55,6 +55,13 @@ export function WeakCardsList({ items, onReviewCard, onReviewSetWeakCards }: Wea
                     <span className="rounded-full border border-app-border px-2 py-1">
                       Retention score {item.retentionScore}
                     </span>
+                    {item.mcqReviewCount !== undefined &&
+                      item.reviewCount > 0 &&
+                      item.mcqReviewCount / item.reviewCount > 0.5 && (
+                      <span className="rounded-full border border-app-nav/20 bg-app-nav/10 px-2 py-1 text-app-nav">
+                        Mostly MCQ — try flip mode
+                      </span>
+                    )}
                     <span className="rounded-full border border-app-border px-2 py-1">
                       {item.reviewCount.toLocaleString()} review{item.reviewCount === 1 ? '' : 's'}
                     </span>

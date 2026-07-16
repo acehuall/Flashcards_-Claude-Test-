@@ -56,6 +56,7 @@ function sanitizeSettings(value: unknown): AppSettings {
     autoShowAnswer: readAutoShowAnswer(record.autoShowAnswer),
     swipeGestures: readBoolean(record.swipeGestures, DEFAULT_SETTINGS.swipeGestures),
     studyReminders: readBoolean(record.studyReminders, DEFAULT_SETTINGS.studyReminders),
+    cardMode: readCardMode(record.cardMode),
     baseThemeId,
     accentHex,
     accentByBase,
@@ -102,6 +103,10 @@ function readAutoShowAnswer(value: unknown): AppSettings['autoShowAnswer'] {
   return typeof value === 'number' && AUTO_SHOW_OPTIONS.has(value)
     ? value as AppSettings['autoShowAnswer']
     : DEFAULT_SETTINGS.autoShowAnswer;
+}
+
+function readCardMode(value: unknown): AppSettings['cardMode'] {
+  return value === 'multiple-choice' ? 'multiple-choice' : 'flip';
 }
 
 function readBoolean(value: unknown, fallback: boolean): boolean {

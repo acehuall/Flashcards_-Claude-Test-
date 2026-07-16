@@ -68,11 +68,12 @@ interface SelectRowProps {
   value: number;
   options: { value: number; label: string }[];
   onChange: (v: number) => void;
+  disabled?: boolean;
 }
 
-function SelectRow({ label, description, value, options, onChange }: SelectRowProps) {
+function SelectRow({ label, description, value, options, onChange, disabled }: SelectRowProps) {
   return (
-    <div className="flex items-center justify-between py-4">
+    <div className={clsx('flex items-center justify-between py-4', disabled && 'opacity-50')}>
       <div>
         <p className="text-sm font-medium text-app-primary">{label}</p>
         {description && <p className="text-xs text-app-secondary mt-0.5">{description}</p>}
@@ -80,6 +81,7 @@ function SelectRow({ label, description, value, options, onChange }: SelectRowPr
       <select
         value={value}
         onChange={(e) => onChange(parseInt(e.target.value, 10))}
+        disabled={disabled}
         className="rounded-lg border border-app-border bg-app-bg-alt px-3 py-1.5 text-sm text-app-primary focus:outline-none focus:ring-2 focus:ring-app-nav-dark focus:ring-offset-2 focus:ring-offset-app-surface"
       >
         {options.map((o) => (
@@ -482,6 +484,12 @@ export function SettingsPage() {
           </h2>
           <div className="bg-app-surface border border-app-border rounded-card divide-y divide-app-border px-5">
             <SettingRow
+              checked={settings.cardMode === 'multiple-choice'}
+              onChange={(v) => updateSettings({ cardMode: v ? 'multiple-choice' : 'flip' })}
+              label="Multiple choice mode"
+              description="Show 4 answer options instead of a flip card. Correct answer plus 3 distractors from the same set."
+            />
+            <SettingRow
               checked={settings.shuffleCards}
               onChange={(v) => updateSettings({ shuffleCards: v })}
               label="Shuffle cards"
@@ -490,6 +498,7 @@ export function SettingsPage() {
             <SettingRow
               checked={settings.flipAnimation}
               onChange={(v) => updateSettings({ flipAnimation: v })}
+              disabled={settings.cardMode === 'multiple-choice'}
               label="Flip animation"
               description="3D flip effect when revealing the answer"
             />
@@ -504,6 +513,7 @@ export function SettingsPage() {
                 { value: 10, label: 'After 10 seconds' },
               ]}
               onChange={(v) => updateSettings({ autoShowAnswer: v as 0 | 3 | 5 | 10 })}
+              disabled={settings.cardMode === 'multiple-choice'}
             />
           </div>
         </section>

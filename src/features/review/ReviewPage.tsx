@@ -19,6 +19,8 @@ import { useToast } from '../../context/ToastContext';
 import { useSettings } from '../../context/SettingsContext';
 import clsx from 'clsx';
 import { useReviewSwipe } from './hooks/useReviewSwipe';
+import { generateOptions, isMCQViable, type MCQOption } from '../../domain/multiChoiceUtils';
+import { MultiChoiceCard } from './components/MultiChoiceCard';
 
 type PageStatus = 'loading' | 'resuming' | 'reviewing' | 'completing';
 interface ResumePromptProps {
@@ -475,9 +477,13 @@ export function ReviewPage({ mode = 'full', seedCardIds }: { mode?: SessionMode;
   const [pageStatus, setPageStatus] = useState<PageStatus>('loading');
   const [pendingSnapshot, setPendingSnapshot] = useState<ActiveSessionSnapshot | null>(null);
   const [buttonFeedback, setButtonFeedback] = useState<'correct' | 'incorrect' | 'flagged' | null>(null);
+  const [mcqOptions, setMcqOptions] = useState<MCQOption[]>([]);
+  const [fullCardPool, setFullCardPool] = useState<ReviewCard[]>([]);
+  const isMCQ = settings.cardMode === 'multiple-choice';
   const buttonFeedbackTimeoutRef = useRef<number | null>(null);
   const cardTimingRef = useRef<Record<number, CardTiming>>({});
   const sessionStartedAtRef = useRef<number | null>(null);
+  const selectedAnswersRef = useRef<Record<number, string>>({});
 
   const [state, dispatch] = useReducer(reviewReducer, {
     queue: [],
@@ -555,6 +561,17 @@ export function ReviewPage({ mode = 'full', seedCardIds }: { mode?: SessionMode;
     captureAnsweredAt(method);
     dispatchOutcome(outcome);
   }, [captureAnsweredAt, currentCard, currentCardAnswered, dispatchOutcome, interactionLocked, state.isFlipped]);
+
+
+  const handleMCQAnswer = useCallback((selectedText: string, isCorrect: boolean) => {
+    if (!currentCard || currentCardAnswered) return;
+    const now = Date.now();
+    const timing = ensureCardTiming(currentCard.id, now);
+    timing.answeredAt = now;
+    timing.answerMethod = 'button';
+    selectedAnswersRef.current[currentCard.id] = selectedText;
+    dispatchOutcome(isCorrect ? 'correct' : 'incorrect');
+  }, [currentCard, currentCardAnswered, ensureCardTiming, dispatchOutcome]);
 
   // Save snapshot periodically and on change
   const saveSnapshot = useCallback(async (s: typeof state) => {
@@ -637,14 +654,23 @@ export function ReviewPage({ mode = 'full', seedCardIds }: { mode?: SessionMode;
         return;
       }
 
+      const allSetCards = await db.cards.where('setId').equals(id).toArray();
+      const fullPool: ReviewCard[] = allSetCards.reduce<ReviewCard[]>((acc, card) => {
+        if (!card.deletedAt && typeof card.id === 'number') acc.push({ id: card.id, question: card.question, answer: card.answer });
+        return acc;
+      }, []);
+      setFullCardPool(fullPool);
+
       const startedAt = Date.now();
       const sessionId = await sessionRepo.create({
         setId: id,
         startedAt,
         mode,
+        displayMode: isMCQ ? 'multiple-choice' : 'flip',
       });
 
       cardTimingRef.current = {};
+      selectedAnswersRef.current = {};
       sessionStartedAtRef.current = startedAt;
       const initialState = buildInitialState(cards, sessionId, id, mode, settings.shuffleCards);
       dispatch({ type: 'RESTORE', payload: toSnapshot(initialState) });
@@ -714,6 +740,7 @@ export function ReviewPage({ mode = 'full', seedCardIds }: { mode?: SessionMode;
               : undefined,
             wasAutoShown: timing?.wasAutoShown,
             answerMethod: timing?.answerMethod,
+            selectedAnswer: isMCQ ? selectedAnswersRef.current[resolvedCardId] : undefined,
           };
         });
         const statsUpdates = resultEntries.map((result) => ({
@@ -734,6 +761,7 @@ export function ReviewPage({ mode = 'full', seedCardIds }: { mode?: SessionMode;
             incorrectCount: incorrect,
             flaggedCount: flagged,
             durationMs,
+            displayMode: isMCQ ? 'multiple-choice' : 'flip',
           },
         });
 
@@ -756,10 +784,11 @@ export function ReviewPage({ mode = 'full', seedCardIds }: { mode?: SessionMode;
 
     complete();
     return () => { cancelled = true; };
-  }, [state.isComplete]);
+  }, [isMCQ, state.isComplete]);
 
   // Auto-save snapshot on state changes during review
   useEffect(() => {
+    if (isMCQ) return;
     if (pageStatus !== 'reviewing') return;
     const timer = setTimeout(() => saveSnapshot(state), 500);
     return () => clearTimeout(timer);
@@ -780,7 +809,7 @@ export function ReviewPage({ mode = 'full', seedCardIds }: { mode?: SessionMode;
       settings.autoShowAnswer * 1000,
     );
     return () => clearTimeout(timer);
-  }, [pageStatus, settings.autoShowAnswer, state.currentIndex, state.isFlipped, toggleCurrentCard]);
+  }, [isMCQ, pageStatus, settings.autoShowAnswer, state.currentIndex, state.isFlipped, toggleCurrentCard]);
 
   const navigateToCard = useCallback((index: number) => {
     if (interactionLocked) return;
@@ -793,6 +822,21 @@ export function ReviewPage({ mode = 'full', seedCardIds }: { mode?: SessionMode;
       buttonFeedbackTimeoutRef.current = null;
     }
   }, []);
+
+  // Generate MCQ options when current card changes
+  useEffect(() => {
+    if (!isMCQ || !currentCard || pageStatus !== 'reviewing') return;
+    if (!isMCQViable(fullCardPool)) return;
+    setMcqOptions(generateOptions(currentCard, fullCardPool, 4));
+  }, [isMCQ, currentCard?.id, fullCardPool, pageStatus]);
+
+  // Warn if pool is too small for MCQ
+  useEffect(() => {
+    if (pageStatus !== 'reviewing' || !isMCQ) return;
+    if (!isMCQViable(fullCardPool)) {
+      addToast('Multiple choice needs at least 2 cards in this set.', 'info');
+    }
+  }, [pageStatus, isMCQ, fullCardPool, addToast]);
 
   const resolveOutcomeWithFeedback = useCallback((outcome: 'correct' | 'incorrect' | 'flagged', method: AnswerMethod = 'button') => {
     if (interactionLocked || !state.isFlipped || !currentCard || currentCardAnswered) return;
@@ -923,7 +967,59 @@ export function ReviewPage({ mode = 'full', seedCardIds }: { mode?: SessionMode;
               disabled={interactionLocked}
             />
 
-            {/* Card */}
+            {isMCQ ? (
+              <>
+                <MultiChoiceCard
+                  key={currentCard.id}
+                  question={currentCard.question}
+                  options={mcqOptions}
+                  onAnswer={handleMCQAnswer}
+                  feedbackDelayMs={800}
+                  disabled={currentCardAnswered}
+                />
+
+                {/* MCQ navigation row — no outcome buttons */}
+                <div className="flex items-center justify-center gap-4 pb-4">
+                  <button
+                    onClick={() => dispatch({ type: 'NAVIGATE_PREV' })}
+                    disabled={state.currentIndex === 0}
+                    className="flex h-11 w-11 items-center justify-center rounded-full border border-app-border bg-app-surface text-app-secondary transition-all hover:border-app-border-strong hover:bg-app-surface-2 hover:text-app-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-app-nav-dark focus-visible:ring-offset-2 focus-visible:ring-offset-app-bg disabled:cursor-not-allowed disabled:opacity-30"
+                    aria-label="Previous card"
+                  >
+                    <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+                    </svg>
+                  </button>
+
+                  <p className="text-sm text-app-secondary min-w-[120px] text-center">
+                    {currentCardAnswered
+                      ? state.outcomes[currentCard.id] === 'correct'
+                        ? '✓ Correct'
+                        : '✗ Incorrect'
+                      : 'Choose an answer'}
+                  </p>
+
+                  <button
+                    onClick={() => dispatch({ type: 'NAVIGATE_NEXT' })}
+                    disabled={state.currentIndex >= state.queue.length - 1}
+                    className="flex h-11 w-11 items-center justify-center rounded-full border border-app-border bg-app-surface text-app-secondary transition-all hover:border-app-border-strong hover:bg-app-surface-2 hover:text-app-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-app-nav-dark focus-visible:ring-offset-2 focus-visible:ring-offset-app-bg disabled:cursor-not-allowed disabled:opacity-30"
+                    aria-label="Next card"
+                  >
+                    <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                    </svg>
+                  </button>
+                </div>
+
+                <p className="hidden text-center text-xs text-app-secondary/50 sm:block">
+                  ←/→ navigate · A B C D to answer
+                </p>
+                <p className="text-center text-xs text-app-secondary/50 sm:hidden">
+                  Tap an option to answer
+                </p>
+              </>
+            ) : (
+              <>
             <div className="flex w-full justify-center">
               <FlipCard
                 key={currentCard.id}
@@ -1041,6 +1137,8 @@ export function ReviewPage({ mode = 'full', seedCardIds }: { mode?: SessionMode;
             <p className="text-center text-xs text-app-secondary/50 sm:hidden">
               Tap to flip · Swipe right correct · left incorrect · flag with button
             </p>
+              </>
+            )}
           </>
         ) : null}
       </div>

@@ -63,6 +63,7 @@ export interface WeakCardInsight {
   retentionStatus: CardRetentionStatus;
   daysSinceLastReview: number | null;
   canReview: boolean;
+  mcqReviewCount?: number;
 }
 
 export type RetentionFocusStatus = Extract<CardRetentionStatus, 'due' | 'needs-practice'>;
@@ -83,6 +84,10 @@ export interface SetPerformanceRow {
   completedSessions: number;
   accuracy: number | null;
   averageResponseMs: number | null;
+  mcqSessionCount: number;
+  flipSessionCount: number;
+  mcqAccuracy: number | null;
+  flipAccuracy: number | null;
   lastReviewedAt: number | null;
   weakCardCount: number;
   weakCardIds: number[];
@@ -733,6 +738,12 @@ export function getSetPerformance(
     timedCount: number;
     timedTotalMs: number;
     lastReviewedAt: number | null;
+    mcqSessions: number;
+    flipSessions: number;
+    mcqCorrect: number;
+    mcqReviewed: number;
+    flipCorrect: number;
+    flipReviewed: number;
   }>();
   const statsFallbackBySet = new Map<number, SetStatsFallback>();
 
@@ -758,6 +769,8 @@ export function getSetPerformance(
     const summary = getSessionSummary(session, resultsBySessionId.get(session.id) ?? []);
     const existing = sessionTotalsBySet.get(session.setId);
 
+    const isSessionMCQ = session.displayMode === 'multiple-choice';
+
     if (existing) {
       existing.totalReviewed += summary.totalReviewed;
       existing.correctCount += summary.correctCount;
@@ -765,6 +778,15 @@ export function getSetPerformance(
       existing.timedCount += summary.timedCount;
       existing.timedTotalMs += summary.timedTotalMs;
       existing.lastReviewedAt = Math.max(existing.lastReviewedAt ?? 0, session.completedAt);
+      if (isSessionMCQ) {
+        existing.mcqSessions += 1;
+        existing.mcqCorrect += summary.correctCount;
+        existing.mcqReviewed += summary.totalReviewed;
+      } else {
+        existing.flipSessions += 1;
+        existing.flipCorrect += summary.correctCount;
+        existing.flipReviewed += summary.totalReviewed;
+      }
     } else {
       sessionTotalsBySet.set(session.setId, {
         totalReviewed: summary.totalReviewed,
@@ -773,6 +795,12 @@ export function getSetPerformance(
         timedCount: summary.timedCount,
         timedTotalMs: summary.timedTotalMs,
         lastReviewedAt: session.completedAt,
+        mcqSessions: isSessionMCQ ? 1 : 0,
+        flipSessions: isSessionMCQ ? 0 : 1,
+        mcqCorrect: isSessionMCQ ? summary.correctCount : 0,
+        mcqReviewed: isSessionMCQ ? summary.totalReviewed : 0,
+        flipCorrect: isSessionMCQ ? 0 : summary.correctCount,
+        flipReviewed: isSessionMCQ ? 0 : summary.totalReviewed,
       });
     }
   }
@@ -851,6 +879,14 @@ export function getSetPerformance(
         completedSessions: sessionTotals?.completedSessions ?? 0,
         accuracy: totalReviewed > 0 ? roundPercentage(correctCount / totalReviewed) : null,
         averageResponseMs,
+        mcqSessionCount: sessionTotals?.mcqSessions ?? 0,
+        flipSessionCount: sessionTotals?.flipSessions ?? 0,
+        mcqAccuracy: (sessionTotals?.mcqReviewed ?? 0) > 0
+          ? roundPercentage((sessionTotals?.mcqCorrect ?? 0) / (sessionTotals?.mcqReviewed ?? 1))
+          : null,
+        flipAccuracy: (sessionTotals?.flipReviewed ?? 0) > 0
+          ? roundPercentage((sessionTotals?.flipCorrect ?? 0) / (sessionTotals?.flipReviewed ?? 1))
+          : null,
         lastReviewedAt: Math.max(sessionTotals?.lastReviewedAt ?? 0, statsFallback?.lastReviewedAt ?? 0) || null,
         weakCardCount: retentionDetails.weakCardIds.length > 0 ? retentionDetails.weakCardIds.length : weakCardIds.length,
         weakCardIds: retentionDetails.weakCardIds.length > 0 ? retentionDetails.weakCardIds : weakCardIds,
@@ -908,6 +944,10 @@ export function getSetPerformanceFromRollups(
         completedSessions: Math.max(0, rollup.sessionCount),
         accuracy: rollup.reviewedCount > 0 ? roundPercentage(rollup.correctCount / rollup.reviewedCount) : null,
         averageResponseMs: isFiniteNumber(rollup.avgResponseMs) ? rollup.avgResponseMs : null,
+        mcqSessionCount: rollup.mcqSessionCount ?? 0,
+        flipSessionCount: rollup.flipSessionCount ?? 0,
+        mcqAccuracy: (rollup.mcqReviewedCount ?? 0) > 0 ? roundPercentage((rollup.mcqCorrectCount ?? 0) / (rollup.mcqReviewedCount ?? 1)) : null,
+        flipAccuracy: (rollup.flipReviewedCount ?? 0) > 0 ? roundPercentage((rollup.flipCorrectCount ?? 0) / (rollup.flipReviewedCount ?? 1)) : null,
         lastReviewedAt: isFiniteNumber(rollup.lastReviewedAt) ? rollup.lastReviewedAt : null,
         weakCardCount,
         weakCardIds: retentionDetails.weakCardIds,

@@ -127,6 +127,8 @@ export function getLocalDayBounds(value: Date | number): { dateKey: string; dayS
   };
 }
 
+type SessionDisplayModeMap = Map<number, 'flip' | 'multiple-choice'>;
+
 function buildCompletedResultMap(completedSessions: CompletedSession[], results: Result[]): Map<number, Result[]> {
   const completedSessionIds = new Set(completedSessions.map((session) => session.id));
   const resultsBySessionId = new Map<number, Result[]>();
@@ -377,7 +379,7 @@ export function buildDailyStudyRollups(sessions: Session[], results: Result[], n
     .sort((a, b) => a.dateKey.localeCompare(b.dateKey));
 }
 
-export function buildCardRetentions({ sessions, results, stats, cards, now = Date.now() }: AnalyticsSourceData): CardRetention[] {
+export function buildCardRetentions({ sessions, results, stats, cards, now = Date.now() }: AnalyticsSourceData, sessionDisplayModeMap?: SessionDisplayModeMap): CardRetention[] {
   const completedSessions = getCompletedSessions(sessions);
   const sessionById = new Map(completedSessions.map((session) => [session.id, session] as const));
   const completedSessionIds = new Set(completedSessions.map((session) => session.id));
@@ -466,7 +468,15 @@ export function buildCardRetentions({ sessions, results, stats, cards, now = Dat
       const lastHistoryTimestamp = history.length > 0 ? getResultTimestamp(history[history.length - 1]) : null;
       const lastReviewedAt = Math.max(lastHistoryTimestamp ?? 0, stat?.lastReviewedAt ?? 0) || undefined;
       const daysSinceLastReview = lastReviewedAt ? getDaysSinceLastReview(lastReviewedAt, now) : undefined;
-      const retentionScore = getRetentionScore(recentAccuracy, lifetimeAccuracy, daysSinceLastReview);
+      const weightedRecentAccuracy = recentHistory.length > 0
+        ? recentHistory.reduce((sum, result) => {
+          const isFromMCQ = sessionDisplayModeMap?.get(result.sessionId) === 'multiple-choice';
+          const weight = isFromMCQ ? 0.7 : 1.0;
+          return sum + (result.outcome === 'correct' ? weight : 0);
+        }, 0) / recentHistory.reduce((sum, result) => sum + (sessionDisplayModeMap?.get(result.sessionId) === 'multiple-choice' ? 0.7 : 1.0), 0)
+        : lifetimeAccuracy;
+      const retentionScore = getRetentionScore(weightedRecentAccuracy, lifetimeAccuracy, daysSinceLastReview);
+      const mcqReviewCount = history.filter((r) => sessionDisplayModeMap?.get(r.sessionId) === 'multiple-choice').length;
       const status = getCardRetentionStatus({
         reviewCount,
         recentAccuracy,
@@ -479,6 +489,7 @@ export function buildCardRetentions({ sessions, results, stats, cards, now = Dat
         cardId,
         setId,
         reviewCount,
+        mcqReviewCount,
         recentAccuracy: roundTo(recentAccuracy, 4),
         lifetimeAccuracy: roundTo(lifetimeAccuracy, 4),
         avgResponseMs,
@@ -507,7 +518,7 @@ export function buildSetStudyRollups(
   const cardById = new Map(cards.filter((card): card is Card & { id: number } => isFiniteNumber(card.id)).map((card) => [card.id, card] as const));
   const activeCardIdsBySet = new Map<number, number[]>();
   const retentionByCardId = new Map(cardRetentions.map((retention) => [retention.cardId, retention] as const));
-  const setMap = new Map<number, SetStudyRollup & { timedCount: number; timedTotalMs: number }>();
+  const setMap = new Map<number, SetStudyRollup & { timedCount: number; timedTotalMs: number; mcqSessions: number; flipSessions: number; mcqCorrect: number; mcqReviewed: number; flipCorrect: number; flipReviewed: number }>();
 
   for (const card of cards) {
     if (!isFiniteNumber(card.id) || card.deletedAt) {
@@ -526,6 +537,7 @@ export function buildSetStudyRollups(
     const summary = getSessionReviewSummary(session, resultsBySessionId.get(session.id) ?? []);
     const durationMs = getSessionDurationMs(session) ?? 0;
     const existing = setMap.get(session.setId);
+    const isSessionMCQ = session.displayMode === 'multiple-choice';
 
     if (existing) {
       existing.reviewedCount += summary.reviewedCount;
@@ -538,6 +550,15 @@ export function buildSetStudyRollups(
       existing.timedTotalMs += summary.timedTotalMs;
       existing.lastReviewedAt = Math.max(existing.lastReviewedAt ?? 0, session.completedAt);
       existing.updatedAt = now;
+      if (isSessionMCQ) {
+        existing.mcqSessions += 1;
+        existing.mcqCorrect += summary.correctCount;
+        existing.mcqReviewed += summary.reviewedCount;
+      } else {
+        existing.flipSessions += 1;
+        existing.flipCorrect += summary.correctCount;
+        existing.flipReviewed += summary.reviewedCount;
+      }
       continue;
     }
 
@@ -553,11 +574,17 @@ export function buildSetStudyRollups(
       updatedAt: now,
       timedCount: summary.timedCount,
       timedTotalMs: summary.timedTotalMs,
+      mcqSessions: isSessionMCQ ? 1 : 0,
+      flipSessions: isSessionMCQ ? 0 : 1,
+      mcqCorrect: isSessionMCQ ? summary.correctCount : 0,
+      mcqReviewed: isSessionMCQ ? summary.reviewedCount : 0,
+      flipCorrect: isSessionMCQ ? 0 : summary.correctCount,
+      flipReviewed: isSessionMCQ ? 0 : summary.reviewedCount,
     });
   }
 
   return [...setMap.values()]
-    .map(({ timedCount, timedTotalMs, ...rollup }) => {
+    .map(({ timedCount, timedTotalMs, mcqSessions, flipSessions, mcqCorrect, mcqReviewed, flipCorrect, flipReviewed, ...rollup }) => {
       const activeCardIds = activeCardIdsBySet.get(rollup.setId) ?? [];
       const weakCardCount = activeCardIds.reduce((count, cardId) => {
         const card = cardById.get(cardId);
@@ -573,6 +600,12 @@ export function buildSetStudyRollups(
         ...rollup,
         avgResponseMs: timedCount > 0 ? roundTo(timedTotalMs / timedCount, 2) : undefined,
         weakCardCount,
+        mcqSessionCount: mcqSessions,
+        flipSessionCount: flipSessions,
+        mcqCorrectCount: mcqCorrect,
+        mcqReviewedCount: mcqReviewed,
+        flipCorrectCount: flipCorrect,
+        flipReviewedCount: flipReviewed,
       } satisfies SetStudyRollup;
     })
     .sort((a, b) => a.setId - b.setId);
@@ -584,7 +617,10 @@ export function buildAnalyticsRollups({ sessions, results, stats, cards, now = D
   cardRetentions: CardRetention[];
 } {
   const dailyStudyRollups = buildDailyStudyRollups(sessions, results, now);
-  const cardRetentions = buildCardRetentions({ sessions, results, stats, cards, now });
+  const sessionDisplayModeMap = new Map<number, 'flip' | 'multiple-choice'>(
+    sessions.filter((s): s is Session & { id: number } => typeof s.id === 'number').map((s) => [s.id, s.displayMode ?? 'flip']),
+  );
+  const cardRetentions = buildCardRetentions({ sessions, results, stats, cards, now }, sessionDisplayModeMap);
   const setStudyRollups = buildSetStudyRollups(sessions, results, stats, cards, cardRetentions, now);
 
   return {
