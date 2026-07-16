@@ -25,6 +25,7 @@ import {
 const COLORS = {
   correct: '#22C55E',
   incorrect: '#EF4444',
+  flagged: '#FBBF24',
 };
 
 const WEAK_PREVIEW_LIMIT = 4;
@@ -193,6 +194,7 @@ export function ResultsPage() {
   const donutData = [
     { name: 'Correct', value: correct, color: COLORS.correct },
     { name: 'Incorrect', value: incorrect, color: COLORS.incorrect },
+    { name: 'Flagged', value: flagged, color: COLORS.flagged },
   ].filter((segment) => segment.value > 0);
 
   const incorrectCardIds = [...new Set(results
