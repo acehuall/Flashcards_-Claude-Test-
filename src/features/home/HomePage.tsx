@@ -279,7 +279,12 @@ export function HomePage() {
 
       {packs.length === 0 ? (
         <EmptyState
-          icon={<NurseCareIllustration />}
+          icon={
+            <svg className="w-16 h-16" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1}
+                d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" />
+            </svg>
+          }
           title="No packs yet"
           description="Packs are top-level groupings. Create one to start organising your flashcard sets."
           action={{ label: 'Create your first pack', to: '/create/pack' }}
@@ -375,58 +380,6 @@ export function HomePage() {
         preparingPreview={buildingPreview}
       />
     </StandardShell>
-  );
-}
-
-function NurseCareIllustration() {
-  return (
-    <svg
-      className="h-28 w-40 overflow-visible"
-      viewBox="0 0 160 112"
-      fill="none"
-      role="img"
-      aria-label="A nurse shares care with ill people, showing hearts as their green faces return to normal colour"
-    >
-      <defs>
-        <linearGradient id="careHeartGradient" x1="0" y1="0" x2="1" y2="1">
-          <stop offset="0%" stopColor="#f472b6" />
-          <stop offset="100%" stopColor="#fb7185" />
-        </linearGradient>
-      </defs>
-
-      <path d="M24 92c12-8 27-9 44-3s32 5 46-4 25-8 36 2" stroke="currentColor" strokeWidth="2" strokeLinecap="round" opacity="0.18" />
-
-      <g transform="translate(12 30)">
-        <path d="M11 39c0-13 8-22 19-22s19 9 19 22v20H11V39Z" fill="#60a5fa" opacity="0.95" />
-        <circle cx="30" cy="18" r="15" fill="#86efac" stroke="#15803d" strokeWidth="2" />
-        <path d="M23 18h.01M37 18h.01" stroke="#14532d" strokeWidth="3" strokeLinecap="round" />
-        <path d="M24 28c4-3 8-3 12 0" stroke="#14532d" strokeWidth="2" strokeLinecap="round" />
-        <path d="M18 47h24" stroke="#2563eb" strokeWidth="3" strokeLinecap="round" opacity="0.45" />
-      </g>
-
-      <g transform="translate(57 18)">
-        <path d="M12 45c0-14 8-24 21-24s21 10 21 24v28H12V45Z" fill="#f8fafc" stroke="#94a3b8" strokeWidth="2" />
-        <path d="M19 70h28" stroke="#38bdf8" strokeWidth="4" strokeLinecap="round" />
-        <circle cx="33" cy="22" r="16" fill="#f7c7a3" stroke="#c08457" strokeWidth="2" />
-        <path d="M18 9h30v12H18V9Z" fill="#f8fafc" stroke="#94a3b8" strokeWidth="2" />
-        <path d="M33 12v7M29.5 15.5h7" stroke="#fb7185" strokeWidth="2" strokeLinecap="round" />
-        <path d="M26 22h.01M40 22h.01" stroke="#78350f" strokeWidth="3" strokeLinecap="round" />
-        <path d="M27 31c4 4 9 4 13 0" stroke="#78350f" strokeWidth="2" strokeLinecap="round" />
-        <path d="M8 48C3 43 2 38 6 35c5-3 9 3 14 8" stroke="#f7c7a3" strokeWidth="6" strokeLinecap="round" />
-        <path d="M58 48c5-5 6-10 2-13-5-3-9 3-14 8" stroke="#f7c7a3" strokeWidth="6" strokeLinecap="round" />
-      </g>
-
-      <g transform="translate(110 30)">
-        <path d="M11 39c0-13 8-22 19-22s19 9 19 22v20H11V39Z" fill="#a78bfa" opacity="0.95" />
-        <circle cx="30" cy="18" r="15" fill="#f1c6a8" stroke="#c08457" strokeWidth="2" />
-        <path d="M23 18h.01M37 18h.01" stroke="#78350f" strokeWidth="3" strokeLinecap="round" />
-        <path d="M24 27c4 4 8 4 12 0" stroke="#78350f" strokeWidth="2" strokeLinecap="round" />
-        <path d="M18 47h24" stroke="#7c3aed" strokeWidth="3" strokeLinecap="round" opacity="0.45" />
-      </g>
-
-      <path d="M55 31c-2-6 6-9 10-3 4-6 12-3 10 3-2 6-10 10-10 10s-8-4-10-10Z" fill="url(#careHeartGradient)" />
-      <path d="M92 31c-2-6 6-9 10-3 4-6 12-3 10 3-2 6-10 10-10 10s-8-4-10-10Z" fill="url(#careHeartGradient)" />
-    </svg>
   );
 }
 
